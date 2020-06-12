@@ -1,0 +1,8 @@
+.Toolbar {
+    position: fixed;
+    height: 6rem;
+    background-color: #AAA;
+    left: 0;
+    right: 0;
+    top: 0;
+}
