@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import classes from './Toolbar.css';
 import Tool from './Tool/Tool.js'
 import allContext from '../../context/allContext';
+import Sidebar from '../../hoc/Toolbar/Sidebar/Sidebar'
 
 class Toolbar extends Component {
     static contextType = allContext;

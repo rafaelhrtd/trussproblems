@@ -12,7 +12,6 @@ class Tool extends Component {
     changeHandler = (event) => {
         event.persist()
         this.setState(() => {
-            console.log(event.target)
             return({[event.target.name]: event.target.value})
         })
     }

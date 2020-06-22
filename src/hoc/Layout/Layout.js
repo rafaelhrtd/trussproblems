@@ -1,53 +1,368 @@
 import React, { Component } from 'react';
 import App from '../../App.js';
-import classes from './Layout.css'
-import Toolbar from '../Toolbar/Toolbar.js'
-import allContext from '../../context/allContext'
+import classes from './Layout.css';
+import Toolbar from '../Toolbar/Toolbar.js';
+import allContext from '../../context/allContext';
+import { setFocusItem, deleteMember, deleteForce } from './layoutHelper';
+import Sidebar from '../Toolbar/Sidebar/Sidebar';
 
 class Layout extends Component {
     state = {
         nodes: {},
         members: {},
-        forces: {}
+        forces: {},
+        supports: {},
+        nodeCount: 0,
+        memberCount: 0,
+        forceCount: 0,
+        supportCount: 0,
+        sideBarNew: true,
+        sideBarObject: 'node'
     }
 
-    addNode = (x, y) => {
-        this.setState((prevState) => {
-            const id = Object.keys(this.state.nodes).length
-            let nodes = {...prevState.nodes}
-            nodes[id] = {
-                x: parseFloat(x),
-                y: parseFloat(y),
-                id: id,
-                members: []
-            }
-            return ({
-                nodes: nodes
+    addNode = (inputElements) => {
+        // if editing existent node
+        if (inputElements.edit){
+            this.setState((prevState => {
+                let nodes = {...prevState.nodes}
+                let node = {...nodes[inputElements.id]}
+                node.x = inputElements.x.value
+                node.y = inputElements.y.value
+                nodes[inputElements.id] = node
+                return({nodes: nodes})
+            }))
+        // if making new node
+        } else {
+            this.setState((prevState) => {
+                const id = prevState.nodeCount + 1
+                let nodes = {...prevState.nodes}
+                nodes[id] = {
+                    x: parseFloat(inputElements.x.value),
+                    y: parseFloat(inputElements.y.value),
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                return ({
+                    nodes: nodes,
+                    nodeCount: id 
+                })
             })
-        })
+        }
     }
 
-    addMember = (nodeA, nodeB) => {
-        this.setState(prevState => {
-            const id = Object.keys(this.state.members).length
-            let members = {...prevState.members}
-            let nodes = {...prevState.nodes}
-            members[id] = {
-                nodeA: nodeA.id,
-                nodeB: nodeB.id
+    deleteElement = (inputElements) => {
+        switch(inputElements.type){
+            case 'node':
+                this.setState(prevState => {
+                    let nodes = {...prevState.nodes}
+                    let node = {...nodes[inputElements.id]}
+                    let members = {...prevState.members}
+                    let forces = {...prevState.forces}
+                    let supports = {...prevState.supports}
+                    // remove dependents
+                    Object.keys(members).map(key => {
+                        const member = members[key]
+                        if (member.nodeA === node.id || member.nodeB === node.id){
+                            const newElements = deleteMember(member.id, nodes, members, forces)
+                            nodes = newElements.nodes
+                            node = {...nodes[node.id]}
+                            members = newElements.members
+                            forces = newElements.forces
+                        }
+                    })
+                    Object.keys(forces).map(key => {
+                        const force = forces[key]
+                        if (force.node.id === node.id){
+                            const newElements = deleteForce(force.id, nodes, members, forces)
+                            nodes = newElements.nodes
+                            node = {...nodes[node.id]}
+                            members = newElements.members
+                            forces = newElements.forces                         
+                        }
+                    })
+                    Object.keys(supports).map(key => {
+                        const support = supports[key]
+                        if (support.node.id === node.id){
+                            delete supports[support.id]                         
+                        }
+                    })
+                    delete nodes[node.id]
+                    return({nodes: nodes, members: members, forces: forces, supports: supports})
+                })
+                break;
+            case 'member':
+                this.setState(prevState => {
+                    let newElements = deleteMember(inputElements.id, prevState.nodes, prevState.members, prevState.forces)
+                    return({members: newElements.nodes, nodes: newElements.members, forces: newElements.forces})
+                })
+                break;
+            case 'force':
+                this.setState(prevState => {
+                    let newElements = deleteForce(inputElements.id, prevState.nodes, prevState.members, prevState.forces)
+                    return({members: newElements.nodes, nodes: newElements.members, forces: newElements.forces})
+                })
+                break;
+            case 'support':
+                this.setState(prevState => {
+                    let supports = {...prevState.supports}
+                    let support = {...supports[inputElements.id]}
+                    let nodes = {...prevState.nodes}
+                    let node = {...nodes[support.node]}
+                    delete supports[support.id]
+                    // remove from parent
+                    node.support = null
+                    nodes[node.id] = node
+                    return({supports: supports, nodes: nodes})
+                })
+                break;
+        }
+    }
+
+    addMember = (inputElements) => {
+        // todo check that there is no existent one here
+        if (inputElements.nodeA.value !== inputElements.nodeB.value){
+            // if editing existent
+            if (inputElements.edit){
+                this.setState(prevState => {
+                    let members = {...prevState.members};
+                    let member = {...members[inputElements.id]};
+                    member.nodeA = parseInt(inputElements.nodeA.value);
+                    member.nodeB = parseInt(inputElements.nodeB.value);
+
+                    member.nodes = () => {
+                        return {
+                            a: this.state.nodes[parseInt(inputElements.nodeA.value)],
+                            b: this.state.nodes[parseInt(inputElements.nodeB.value)]
+                        }
+                    }
+                    members[inputElements.id] = member;
+                    
+                    // Previous nodes
+                    let nodes = {...prevState.nodes}
+                    let prevNodeA = {...prevState.nodes[prevState.members[member.id].nodeA]}
+                    let prevNodeB = {...prevState.nodes[prevState.members[member.id].nodeB]}
+                    // remove from previous nodes
+                    Object.keys(prevNodeA.members).map(index => {
+                        if (prevNodeA.members[index].id === member.id){
+                            prevNodeA.members.splice(index,1)
+                        }
+                    })
+                    Object.keys(prevNodeB.members).map(index => {
+                        if (prevNodeB.members[index].id === member.id){
+                            prevNodeB.members.splice(index,1)
+                        }
+                    })
+                    // add to new nodes
+                    let nodeA = {...prevState.nodes[member.nodeA]}
+                    let nodeB = {...prevState.nodes[member.nodeB]}
+                    nodeA.members.push(member)
+                    nodeB.members.push(member)
+                    // add to node collection
+                    nodes[nodeA.id] = nodeA
+                    nodes[nodeB.id] = nodeB
+                    
+                    return({members: members, nodes: nodes})
+                })
+            } else {
+                this.setState(prevState => {
+                    const id = this.state.memberCount + 1
+                    let members = {...prevState.members}
+                    let nodes = {...prevState.nodes}
+                    members[id] = {
+                        nodes: () => {
+                            return {
+                                a: this.state.nodes[parseInt(inputElements.nodeA.value)],
+                                b: this.state.nodes[parseInt(inputElements.nodeB.value)]
+                            }
+                        },
+                        nodeA: parseInt(inputElements.nodeA.value),
+                        nodeB: parseInt(inputElements.nodeB.value),
+                        id: prevState.memberCount + 1,
+                        forces: []
+                    }
+                    nodes[parseInt(inputElements.nodeA.value)].members.push(members[id])
+                    nodes[parseInt(inputElements.nodeB.value)].members.push(members[id])
+                    return({
+                        members: members,
+                        nodes: nodes,
+                        memberCount: prevState.memberCount + 1
+                    })
+                })
             }
-            nodes[nodeA.id].members.push(members[id])
-            return({
-                members: members,
-                nodes: nodes
+        }
+        return null
+    }
+
+    addMemberForce = (inputElements) => {
+        // if editing existing force
+        if (inputElements.edit){
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                let force = {...forces[inputElements.id]}
+                // update current force
+                force.member = parseInt(inputElements.member.value);
+                force.forceType = inputElements.forceType.value;
+                if (inputElements.forceType.value === 'point'){
+                    let accepted = ['id', 'member', 'forceType', 'xForce', 'yForce', 'location']
+                    force.xForce = parseFloat(inputElements.xForce.value)
+                    force.yForce = parseFloat(inputElements.yForce.value)
+                    force.location = parseFloat(inputElements.location.value)
+                    // remove keys that are not accepted
+                    Object.keys(force).map(key => {
+                        if (!accepted.includes(key)){
+                            delete force[key]
+                        }
+                    })
+                } else if (inputElements.forceType.value === 'distributed'){
+                    let accepted = ['id', 'member', 'forceType', 'startXForce', 'startYForce', 'endXForce', 'endYForce', 'startPoint', 'endPoint']
+                    force.startXForce = parseFloat(inputElements.startXForce.value)
+                    force.startYForce = parseFloat(inputElements.startYForce.value)
+                    force.endXForce = parseFloat(inputElements.endXForce.value)
+                    force.endYForce = parseFloat(inputElements.endYForce.value)
+                    force.startPoint = parseFloat(inputElements.startPoint.value)
+                    force.endPoint = parseFloat(inputElements.endPoint.value)
+                    // remove keys that are not accepted
+                    Object.keys(force).map(key => {
+                        if (!accepted.includes(key)){
+                            delete force[key]
+                        }
+                    })
+                }
+                // set edited force
+                forces[force.id] = force
+                // remove force from previous member
+                let members = {...prevState.members}
+                let prevMember = {...members[prevState.forces[force.id].member]}
+                Object.keys(prevMember.forces).map(index => {
+                    if (prevMember.forces[index] === force.id){
+                        prevMember.forces.splice(index,1)
+                    }
+                })
+
+                // add to new member
+                let member = {...members[force.member]}
+                member.forces = [...member.forces]
+                member.forces.push(force.id)
+
+                // update members
+                members[prevMember.id] = prevMember
+                members[member.id] = member
+                return({
+                    forces: forces,
+                    members: members
+                })
             })
-        })
+        // if adding force
+        } else {
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                let members = {...prevState.members}
+                let member = {...members[inputElements.member.value]}
+                console.log('inputElements')
+                console.log(inputElements)
+                members[member.id] = member
+                member.forces = member.forces ? [...member.forces, prevState.forceCount + 1] : [prevState.forceCount+1]
+                let force = {
+                    id: prevState.forceCount+1,
+                    member: parseInt(inputElements.member.value),
+                    forceType: inputElements.forceType.value
+                }
+                if (inputElements.forceType.value === 'point'){
+                    let accepted = ['id', 'member', 'forceType', 'xForce', 'yForce', 'location']
+                    force.xForce = parseFloat(inputElements.xForce.value)
+                    force.yForce = parseFloat(inputElements.yForce.value)
+                    force.location = parseFloat(inputElements.location.value)
+                    // remove keys that are not accepted
+                    Object.keys(force).map(key => {
+                        if (!accepted.includes(key)){
+                            delete force[key]
+                        }
+                    })
+                } else if (inputElements.forceType.value === 'distributed'){
+                    let accepted = ['id', 'member', 'forceType', 'startXForce', 'startYForce', 'endXForce', 'endYForce', 'startPoint', 'endPoint']
+                    force.startXForce = parseFloat(inputElements.startXForce.value)
+                    force.startYForce = parseFloat(inputElements.startYForce.value)
+                    force.endXForce = parseFloat(inputElements.endXForce.value)
+                    force.endYForce = parseFloat(inputElements.endYForce.value)
+                    force.startPoint = parseFloat(inputElements.startPoint.value)
+                    force.endPoint = parseFloat(inputElements.endPoint.value)
+                    // remove keys that are not accepted
+                    Object.keys(force).map(key => {
+                        if (!accepted.includes(key)){
+                            delete force[key]
+                        }
+                    })
+                }
+                forces[prevState.forceCount + 1] = force
+                return({
+                    forces: forces,
+                    forceCount: prevState.forceCount + 1,
+                    members: members
+                })
+            })
+        }
+    }
+
+    addNodeForce = (inputElements) => {
+        // if editing force
+        if (inputElements.edit){
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                let force = {...forces[inputElements.id]}
+                force.node = parseInt(inputElements.node.value)
+                force.xForce = parseInt(inputElements.xForce.value)
+                force.yForce = parseInt(inputElements.yForce.value)
+                forces[force.id] = force
+                // remove from previous nodes
+                let nodes = {...prevState.nodes}
+                let prevNode = {...nodes[prevState.forces[force.id].node]}
+                prevNode.force = null
+                nodes[prevNode.id] = prevNode
+                // add to current node
+                let node = {...nodes[force.node]}
+                node.force = force.id
+                nodes[node.id] = node
+                return({
+                    forces: forces,
+                    nodes: nodes
+                })
+            })
+        // if adding new force
+        } else {
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                const force = {
+                    id: prevState.forceCount+1,
+                    node: parseInt(inputElements.node.value),
+                    xForce: inputElements.xForce.value,
+                    yForce: inputElements.yForce.value,
+                }
+                // add to current node
+                let nodes = {...prevState.nodes}
+                let node = {...nodes[force.node]}
+                node.force = force.id
+                nodes[node.id] = node
+                forces[prevState.forceCount + 1] = force
+                return({
+                    forces: forces,
+                    nodes: nodes,
+                    forceCount: prevState.forceCount + 1
+                })
+            })
+        }
     }
 
     addNodeCoordinates = (nodes) => {
         this.setState(() => {
             return {nodes: nodes}
         })
+    }
+
+    componentDidUpdate = () => {
+        console.log('layout')
+        console.log(this.state)
     }
 
     render(){
@@ -58,10 +373,17 @@ class Layout extends Component {
                 forces: this.state.forces,
                 addNode: this.addNode,
                 addNodeCoordinates: this.addNodeCoordinates,
-                addMember: this.addMember
+                addMember: this.addMember,
+                setFocusItem: setFocusItem.bind(this),
+                focus: this.state.focus,
+                deleteElement: this.deleteElement,
+                addMemberForce: this.addMemberForce,
+                addNodeForce: this.addNodeForce
             }}>
                 <div className={classes.Container}>
-                    <Toolbar />
+                    <Sidebar
+                        sideBarNew={this.state.sideBarNew}
+                        sideBarObject={this.state.sideBarObject} />
                     <App
                         nodes={this.state.nodes}
                         members={this.state.members}

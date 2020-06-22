@@ -1,0 +1,50 @@
+.Sidebar {
+    position: fixed;
+    left: 0;
+    width: 200px;
+    top: 0;
+    bottom: 0;
+    background-color: #CCC;
+}
+
+.Sidebar ul {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    list-style: none;
+}
+
+.Sidebar ul li {
+    position: relative;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    box-sizing: border-box;
+    padding: 1rem;
+}
+
+.Sidebar ul li:hover,
+.Sidebar ul li:active
+.Sidebar ul li:focus {
+    background-color: #666;
+    color: white;
+}
+
+.Sidebar ul li:hover .options {
+    display: block;
+}
+
+.options {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    transform: translateX(100%);
+    display: none;
+}
+
+.options .option {
+    color: black;
+    background-color: #CCC;
+}
