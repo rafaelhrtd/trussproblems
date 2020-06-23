@@ -31,7 +31,7 @@ const dragLine = function(event){
     ctx.beginPath()
     ctx.moveTo(node.coordinates.x, node.coordinates.y)
     ctx.lineTo(mousePos.x, mousePos.y); 
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.stroke();
     ctx.closePath()
 }
@@ -119,7 +119,7 @@ export const drawSingleNode = function(node, options = {}){
     ctx.fill();
     ctx.fillStyle = 'black';
     ctx.font = "16px Arial";
-    ctx.fillText(node.id.toString(), node.coordinates.x - 15, node.coordinates.y - 10)
+    ctx.fillText(node.id.toString(), node.coordinates.x + 15, node.coordinates.y - 10)
     ctx.closePath()
 }
 
@@ -132,6 +132,7 @@ export const drawSingleMember = function(member, options = {}){
     let nodeA = {...this.props.nodes[member.nodeA]}
     let nodeB = {...this.props.nodes[member.nodeB]}
     ctx.moveTo(nodeA.coordinates.x, nodeA.coordinates.y)
+    ctx.lineWidth = 2
     ctx.lineTo(nodeB.coordinates.x, nodeB.coordinates.y); 
     const width = nodeB.coordinates.x - nodeA.coordinates.x
     const height = nodeB.coordinates.y - nodeA.coordinates.y
@@ -214,9 +215,14 @@ export const drawSingleSupport = function(support, options = {}){
         // make equilateral triangle
         drawOptions.height = (drawOptions.width / 2) * Math.tan(Math.PI / 3)
         drawPinned(startPoint, ctx, drawOptions, options)
-    } else if (support.supportType = 'xRoller'){
-        
-    } else if (support.supportType = 'yRoller'){
+    } else if (support.supportType === 'xRoller'){
+        let drawOptions = {
+            width: 20,
+            baseLength: 40
+        }
+        drawOptions.height = (drawOptions.width / 2) * Math.tan(Math.PI / 3)
+        drawRoller(startPoint, ctx, drawOptions, {...options, vertical: true})        
+    } else if (support.supportType ==='yRoller'){
         let drawOptions = {
             width: 20,
             baseLength: 40
@@ -227,6 +233,7 @@ export const drawSingleSupport = function(support, options = {}){
 }
 // draw base for supports
 const drawBase = function(startPoint, ctx, baseLength, options){
+    ctx.lineWidth = 1
     if (options.vertical){
         ctx.beginPath();
         let start = {...startPoint}
@@ -260,13 +267,14 @@ const drawBase = function(startPoint, ctx, baseLength, options){
 
 const drawPinned = function(start, ctx, info = {}, options = {}){
     ctx.beginPath();
+    ctx.lineWidth = 1
     ctx.moveTo(start.x, start.y)
     ctx.lineTo(start.x-info.width / 2, start.y+info.height)
     ctx.lineTo(start.x+info.width/2, start.y+info.height)
     ctx.lineTo(start.x, start.y)
-    console.log(info)
     ctx.strokeStyle = options.color ? options.color : '#444444'
     ctx.stroke();
+    ctx.closePath()
     const basePos = {
         x: start.x,
         y: start.y+info.height
@@ -276,27 +284,79 @@ const drawPinned = function(start, ctx, info = {}, options = {}){
 
 
 const drawRoller = function(start, ctx, info = {}, options = {}){
-    const width = info.width-4
-    const height = info.height-4
+    const width = info.width-6
+    const height = info.height-6
+    ctx.lineWidth = 1
     if (options.vertical){
+        ctx.strokeStyle = options.color ? options.color : '#444444'
+        let wheels = [
+            {x: start.x - height - 3, y: start.y - width / 2},
+            {x: start.x - height - 3, y: start.y},
+            {x: start.x - height - 3, y: start.y  + width / 2},
+        ]
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y)
+        ctx.lineTo(start.x-height, start.y - width / 2)
+        ctx.lineTo(start.x-height, start.y + width /2)
+        ctx.lineTo(start.x, start.y)
+        ctx.stroke();
+        ctx.closePath()
+        wheels.map(point => {
+            ctx.beginPath()
+            ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+        })
+        const basePos = {
+            x: start.x-info.height,
+            y: start.y
+        }
+        drawBase(basePos, ctx, info.baseLength, {...options, vertical: true});
 
     } else {
-        console.log(start)
+        ctx.strokeStyle = options.color ? options.color : '#444444'
+        let wheels = [
+            {x: start.x - width / 2, y: start.y + height + 3},
+            {x: start.x, y: start.y + height + 3},
+            {x: start.x + width / 2, y: start.y + height + 3},
+        ]
         ctx.beginPath();
         ctx.moveTo(start.x, start.y)
         ctx.lineTo(start.x-width / 2, start.y+height)
         ctx.lineTo(start.x+width /2, start.y+height)
         ctx.lineTo(start.x, start.y)
-
-        console.log(info)
-        ctx.strokeStyle = options.color ? options.color : '#444444'
         ctx.stroke();
+        ctx.closePath()
+        wheels.map(point => {
+            ctx.beginPath()
+            ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+        })
         const basePos = {
             x: start.x,
             y: start.y+info.height
         }
         drawBase(basePos, ctx, info.baseLength, options);
     }
+}
+
+
+// check if mouse is inside hitbox
+const supportBox = (support, node, mousePos) => {
+    let coordinates = node.coordinates
+    if (support.supportType === 'xRoller'){
+        if (mousePos.y >= coordinates.y-20 && mousePos.y <= coordinates.y + 20
+            && mousePos.x >= coordinates.x - 28 && mousePos.x <= coordinates.x){
+                return true
+        }
+    } else {
+        if (mousePos.y >= coordinates.y && mousePos.y <= coordinates.y + 28
+            && mousePos.x >= coordinates.x - 20 && mousePos.x <= coordinates.x + 20){
+                return true
+        }        
+    }
+    return false
 }
 
 // get start and end to arrows in case of point loads
@@ -382,6 +442,7 @@ const getStartEnd = function(force){
 export const drawArrow = function(pointA, pointB, ctx, options = {}){
     let arrow = []
     // vertical
+    ctx.lineWidth = 1
     if (Math.abs(pointA.x - pointB.x) < 1E-5){
         if (pointB.y - pointA.y > 0){
             arrow.push({x: pointA.x, y: pointA.y})
@@ -657,6 +718,7 @@ export const drawDistributedLoad = function(force, ctx, options = {}){
 const drawSegments = function(pointA, pointB, numPoints, ctx, options = {}){
     let linePoints = []
     ctx.moveTo(pointA.x, pointA.y)
+    ctx.lineWidth = 1
     ctx.lineTo(pointB.x, pointB.y)
     const height = pointB.y - pointA.y;
     const width = pointB.x - pointA.x;
@@ -696,7 +758,7 @@ const memberHeight = function(member, nodes){
 }
 
 // check if the cursor has been pulled away from the node
-export const checkLeaveNode = function(event, node = null){
+export const checkLeaveNode = function(event){
     let mousePos = getMousePosition.bind(this.oldthis)(event);
     let canvas = this.oldthis.canvas.current;
     const distance = this.force ? 50 : 7
@@ -705,17 +767,32 @@ export const checkLeaveNode = function(event, node = null){
             drawNodes.bind(this.oldthis)()
             canvas.removeEventListener("mousemove", this.oldthis.state.checkLeaveNode);
             canvas.removeEventListener("mousedown", this.oldthis.state.drawLine);
+            canvas.removeEventListener("mousedown", this.oldthis.state.setFocus);
         }
     } else {
         if (this.line !== true){
             if (shortestLineDistance(mousePos, this.member) >= distance) {
                 drawNodes.bind(this.oldthis)()
                 canvas.removeEventListener("mousemove", this.oldthis.state.checkLeaveLine);
-                canvas.removeEventListener("mousedown", this.oldthis.state.setFocus)
+                canvas.removeEventListener("mousedown", this.oldthis.state.setFocus);
             }
         }
     }
     
+}
+
+
+// check if the cursor has been pulled away from the support
+export const checkLeaveSupport = function(event){
+    let mousePos = getMousePosition.bind(this.oldthis)(event);
+    let support = this.support
+    let node = this.node;
+    let canvas = this.oldthis.canvas.current;
+    if (!supportBox(support, node, mousePos)){
+        drawNodes.bind(this.oldthis)()
+        canvas.removeEventListener("mousemove", this.oldthis.state.checkLeaveSupport);
+        canvas.removeEventListener("mousedown", this.oldthis.state.setFocus);
+    }    
 }
 
 
@@ -794,7 +871,7 @@ export const checkCloseElements = function(event){
         let mousePos = getMousePosition.bind(this.oldthis)(event);
         let canvas = this.oldthis.canvas.current;
         let currentNode = this.currentNode;
-        let nearestNode = null
+        let nearestNode = null;
         Object.keys(this.oldthis.props.nodes).map(key => {
             const node = this.oldthis.props.nodes[key]
             if (getDistance(mousePos, node) < 7){
@@ -827,6 +904,7 @@ export const checkCloseElements = function(event){
         let canvas = this.canvas.current;
         let foundNode = false;
         let foundMember = false;
+        let foundSupport = false;
         let foundForce = false;
         Object.keys(this.props.nodes).map(key => {
             const node = this.props.nodes[key]
@@ -837,6 +915,7 @@ export const checkCloseElements = function(event){
                     canvas.removeEventListener("mousedown", prevState.drawLine)
                     canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
                     canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                    canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
                     canvas.removeEventListener("mousedown", this.state.setFocus)
                     return{
                         setFocus: setFocusItem.bind({oldthis: this, item: node, itemType: 'node', canvas: canvas}),
@@ -852,6 +931,31 @@ export const checkCloseElements = function(event){
             }
         })
         if (!foundNode) {
+            Object.keys(this.props.supports).map(key =>{
+                const support = this.props.supports[key]
+                const node = this.props.nodes[support.node]
+                if (supportBox(support, node, mousePos)){
+                    drawNodes.bind(this)()
+                    drawSingleSupport.bind(this)(support, {color: 'blue'})
+                    foundSupport = true;
+                    this.setState((prevState) => {
+                        canvas.removeEventListener("mousedown", prevState.drawLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
+                        canvas.removeEventListener("mousedown", this.state.setFocus)
+                        return{
+                            setFocus: setFocusItem.bind({oldthis: this, item: support, itemType: 'support', canvas: canvas}),
+                            checkLeaveSupport: checkLeaveSupport.bind({oldthis: this, support: support, node: this.props.nodes[support.node]})
+                        }
+                    }, () => {
+                        canvas.addEventListener("mousemove", this.state.checkLeaveSupport);
+                        canvas.addEventListener("mousedown", this.state.setFocus)
+                    })
+                }
+            })
+        }
+        if (!foundNode && !foundSupport) {
             Object.keys(this.props.forces).map(key =>{
                 const force = this.props.forces[key]
                 const textLocations = forceText.bind(this)(force)
@@ -878,6 +982,7 @@ export const checkCloseElements = function(event){
                         canvas.removeEventListener("mousedown", prevState.drawLine)
                         canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
                         canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
                         canvas.removeEventListener("mousedown", this.state.setFocus)
                         return{
                             setFocus: setFocusItem.bind({oldthis: this, item: force, itemType: 'force', canvas: canvas}),
@@ -890,7 +995,7 @@ export const checkCloseElements = function(event){
                 }
             })
         }
-        if (!foundNode && !foundForce) {
+        if (!foundNode && !foundForce && !foundSupport) {
             Object.keys(this.props.members).map(key =>{
                 const member = this.props.members[key]
                 if (shortestLineDistance(mousePos, member) < 5){
@@ -900,6 +1005,7 @@ export const checkCloseElements = function(event){
                     this.setState(prevState => {
                         canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
                         canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
                         canvas.removeEventListener("mousedown", this.state.setFocus)
                         canvas.removeEventListener("mousedown", prevState.drawLine)
                         return({
@@ -913,7 +1019,7 @@ export const checkCloseElements = function(event){
                 }
             })
         }
-        if (!foundMember && !foundNode && !foundForce) {
+        if (!foundMember && !foundNode && !foundForce && !foundSupport) {
             this.setState(prevState => {
                 canvas.removeEventListener("mousedown", this.state.setFocus)
                 return{
@@ -927,6 +1033,7 @@ export const checkCloseElements = function(event){
 
     }
 }
+
 
 // runs when an element in the canvas is selected to inform the layout of this
 const setFocusItem = function(){

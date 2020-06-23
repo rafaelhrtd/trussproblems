@@ -397,94 +397,11 @@ export const formFromString = function(string){
     }
 }
 
+// check that inputs follow rules
 export const formValidity = function(form, context){
+    let errors = {}
     let validationTests = {};
     let rules = form.validation
-    if (rules.unique){
-        if (form.element === "node") {
-            let valid = true
-            Object.keys(context.nodes).map(key => {
-                const node = context.nodes[key]
-                if (Math.abs(node.x - parseFloat(form.inputElements.x.value)) < 1E-8 && 
-                    Math.abs(node.y - parseFloat(form.inputElements.y.value)) < 1E-8){
-                    valid = false;
-                }
-            })
-            validationTests.unique = {
-                valid: valid,
-                errorMessage: "Another node already exists at this location."
-            }
-        } else if (form.element === "member") {
-            let valid = true
-            Object.keys(context.members).map(key => {
-                const member = context.members[key]
-                if ((member.nodeA === parseInt(form.inputElements.nodeA.value) || member.nodeB === parseInt(form.inputElements.value)) && 
-                    (member.nodeA === parseInt(form.inputElements.value) || member.nodeB === parseInt(form.inputElements.value))){
-                    valid = false;
-                }
-            })
-            validationTests.unique = {
-                valid: valid,
-                errorMessage: "Another member already exists at this location."
-            }
-        } else if (form.element === "nodeForce") {
-            let valid = true
-            Object.keys(context.forces).map(key => {
-                const force = context.forces[key]
-                if (force.node === parseInt(form.inputElements.node.value)  && form.inputElements.id !== force.id) {
-                    valid = false
-                }
-            })
-            validationTests.unique = {
-                valid: valid,
-                errorMessage: "Another force already exists at this location."
-            }
-        } else if (form.element === "memberForce"){
-            let valid = true 
-            Object.keys(context.forces).map(key => {
-                const force = context.forces[key]
-                if (form.inputElements.forceType.value === 'point' && force.forceType === 'point' && form.inputElements.id !== force.id){
-                    if (Math.abs(force.location - parseFloat(form.inputElements.location.value)) < 1E-5 && 
-                        force.member === form.inputElements.member.value){
-                        valid = false
-                    }
-                } else if (form.inputElements.forceType.value === 'distributed' && force.forceType === 'distributed' && form.inputElements.id !== force.id) {
-                    if (Math.abs(parseFloat(form.inputElements.startPoint.value) - force.startPoint) < 1E-5 &&
-                        Math.abs(parseFloat(form.inputElements.endPoint.value) - force.endPoint) < 1E-5 && 
-                        force.member === form.inputElements.member.value){
-                        valid = false
-                    }
-                }
-            })
-            validationTests.unique = {
-                valid: valid,
-                errorMessage: "Another force already exists at this location."
-            }
-            
-        } else if (form.element === "support") {
-            let node = context.nodes[parseInt(form.inputElements.node.value)]
-            let valid = node.support === null
-            validationTests.unique = {
-                valid: valid,
-                errorMessage: "Another support already exists at this location."
-            }
-
-        }
-        if (rules.differentNodes){
-            if (form.element === "member"){
-                let valid = true 
-                if (form.inputElements.nodeA.value === form.inputElements.nodeB.value){
-                    valid = false
-                }
-                validationTests.unique = {
-                    valid: valid,
-                    errorMessage: "The nodes must be different."
-                }
-            }
-        }
-    }
-
-    let errors = {}
     // check for errors in each form element
     Object.keys(form.inputElements).map(key => {
         // check if the element is being accepted
@@ -497,6 +414,93 @@ export const formValidity = function(form, context){
             }
         }
     })
+    // if the inputs are okay in and of themselves
+    if (Object.keys(errors).length === 0){
+        if (rules.unique){
+            if (form.element === "node") {
+                let valid = true
+                Object.keys(context.nodes).map(key => {
+                    const node = context.nodes[key]
+                    if (Math.abs(node.x - parseFloat(form.inputElements.x.value)) < 1E-8 && 
+                        Math.abs(node.y - parseFloat(form.inputElements.y.value)) < 1E-8){
+                        valid = false;
+                    }
+                })
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another node already exists at this location."
+                }
+            } else if (form.element === "member") {
+                let valid = true
+                Object.keys(context.members).map(key => {
+                    const member = context.members[key]
+                    if ((member.nodeA === parseInt(form.inputElements.nodeA.value) || member.nodeB === parseInt(form.inputElements.value)) && 
+                        (member.nodeA === parseInt(form.inputElements.value) || member.nodeB === parseInt(form.inputElements.value))){
+                        valid = false;
+                    }
+                })
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another member already exists at this location."
+                }
+            } else if (form.element === "nodeForce") {
+                let valid = true
+                Object.keys(context.forces).map(key => {
+                    const force = context.forces[key]
+                    if (force.node === parseInt(form.inputElements.node.value)  && form.inputElements.id !== force.id) {
+                        valid = false
+                    }
+                })
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another force already exists at this location."
+                }
+            } else if (form.element === "memberForce"){
+                let valid = true 
+                Object.keys(context.forces).map(key => {
+                    const force = context.forces[key]
+                    if (form.inputElements.forceType.value === 'point' && force.forceType === 'point' && form.inputElements.id !== force.id){
+                        if (Math.abs(force.location - parseFloat(form.inputElements.location.value)) < 1E-5 && 
+                            force.member === form.inputElements.member.value){
+                            valid = false
+                        }
+                    } else if (form.inputElements.forceType.value === 'distributed' && force.forceType === 'distributed' && form.inputElements.id !== force.id) {
+                        if (Math.abs(parseFloat(form.inputElements.startPoint.value) - force.startPoint) < 1E-5 &&
+                            Math.abs(parseFloat(form.inputElements.endPoint.value) - force.endPoint) < 1E-5 && 
+                            force.member === form.inputElements.member.value){
+                            valid = false
+                        }
+                    }
+                })
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another force already exists at this location."
+                }
+                
+            } else if (form.element === "support") {
+                let node = context.nodes[parseInt(form.inputElements.node.value)]
+                let valid = node.support === null
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another support already exists at this location."
+                }
+    
+            }
+            if (rules.differentNodes){
+                if (form.element === "member"){
+                    let valid = true 
+                    if (form.inputElements.nodeA.value === form.inputElements.nodeB.value){
+                        valid = false
+                    }
+                    validationTests.unique = {
+                        valid: valid,
+                        errorMessage: "The nodes must be different."
+                    }
+                }
+            }
+        }
+        
+    }
 
     Object.keys(validationTests).map(key => {
         if (!validationTests[key].valid){

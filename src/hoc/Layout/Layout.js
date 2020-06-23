@@ -53,24 +53,27 @@ class Layout extends Component {
     }
 
     addSupport = (inputElements) => {
-        console.log(inputElements)
         if (inputElements.edit){
             this.setState((prevState) => {
                 let nodes = {...prevState.nodes}
                 let supports = {...prevState.supports}
                 let support = {...supports[inputElements.id]}
-                // add support
-                support = {
-                    node: parseInt(inputElements.node.id),
-                    supportType: inputElements.supportType.value
-                }
+                // edit support
+                support.node = parseInt(inputElements.node.value)
+                support.type = inputElements.supportType.value
+                supports[support.id] = support
                 // fix nodes
-                let prevNode = {...nodes[prevState.supports[support.id]]}
+                let prevNode = {...nodes[prevState.supports[support.id].node]}
+                console.log('prevNode')
+                console.log(prevNode)
                 let currentNode = {...nodes[support.node]}
+                console.log('currentNode')
+                console.log(currentNode)
                 prevNode.support = null
-                currentNode.support = null
+                currentNode.support = support.id
                 nodes[prevNode.id] = prevNode
                 nodes[currentNode.id] = currentNode
+                console.log(supports)
                 return ({
                     nodes: nodes,
                     supports: supports
@@ -202,7 +205,6 @@ class Layout extends Component {
                         }
                     }
                     for(let index = 0; index < prevNodeB.members.length; index++){
-                        console.log(index)
                         if (prevNodeB.members[index].id === member.id){
                             prevNodeB.members.splice(index,1)
                             break
