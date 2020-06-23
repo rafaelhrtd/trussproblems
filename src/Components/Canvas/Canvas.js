@@ -39,7 +39,6 @@ class Canvas extends Component {
     }
 
     componentDidUpdate =(prevProps, prevState) => {
-        console.log(this.props)
         if (JSON.stringify(prevProps.nodes) !== JSON.stringify(this.props.nodes) || 
             prevState.width !== this.state.width || prevState.height !== this.state.height ||
             JSON.stringify(prevProps.members) !== JSON.stringify(this.props.members) ||

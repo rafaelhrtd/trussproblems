@@ -52,6 +52,57 @@ class Layout extends Component {
         }
     }
 
+    addSupport = (inputElements) => {
+        console.log(inputElements)
+        if (inputElements.edit){
+            this.setState((prevState) => {
+                let nodes = {...prevState.nodes}
+                let supports = {...prevState.supports}
+                let support = {...supports[inputElements.id]}
+                // add support
+                support = {
+                    node: parseInt(inputElements.node.id),
+                    supportType: inputElements.supportType.value
+                }
+                // fix nodes
+                let prevNode = {...nodes[prevState.supports[support.id]]}
+                let currentNode = {...nodes[support.node]}
+                prevNode.support = null
+                currentNode.support = null
+                nodes[prevNode.id] = prevNode
+                nodes[currentNode.id] = currentNode
+                return ({
+                    nodes: nodes,
+                    supports: supports
+                })
+            })
+            
+        // new support
+        } else {
+            this.setState((prevState) => {
+                const id = prevState.supportCount + 1
+                let nodes = {...prevState.nodes}
+                let supports = {...prevState.supports}
+                let node = {...nodes[parseInt(inputElements.node.value)]}
+                // add support
+                let support = {
+                    id: id,
+                    node: node.id,
+                    supportType: inputElements.supportType.value
+                }
+                supports[id] = support
+                // add to node
+                node.support = support.id
+                nodes[node.id] = node
+                return ({
+                    supportCount: id,
+                    nodes: nodes,
+                    supports: supports
+                })
+            })
+        }
+    }
+
     deleteElement = (inputElements) => {
         switch(inputElements.type){
             case 'node':
@@ -144,16 +195,19 @@ class Layout extends Component {
                     let prevNodeA = {...prevState.nodes[prevState.members[member.id].nodeA]}
                     let prevNodeB = {...prevState.nodes[prevState.members[member.id].nodeB]}
                     // remove from previous nodes
-                    Object.keys(prevNodeA.members).map(index => {
+                    for(let index = 0; index < prevNodeA.members.length; index++){
                         if (prevNodeA.members[index].id === member.id){
                             prevNodeA.members.splice(index,1)
+                            break;
                         }
-                    })
-                    Object.keys(prevNodeB.members).map(index => {
+                    }
+                    for(let index = 0; index < prevNodeB.members.length; index++){
+                        console.log(index)
                         if (prevNodeB.members[index].id === member.id){
                             prevNodeB.members.splice(index,1)
+                            break
                         }
-                    })
+                    }
                     // add to new nodes
                     let nodeA = {...prevState.nodes[member.nodeA]}
                     let nodeB = {...prevState.nodes[member.nodeB]}
@@ -235,11 +289,12 @@ class Layout extends Component {
                 // remove force from previous member
                 let members = {...prevState.members}
                 let prevMember = {...members[prevState.forces[force.id].member]}
-                Object.keys(prevMember.forces).map(index => {
+                for(let index = 0; index < prevMember.forces.length; index++){
                     if (prevMember.forces[index] === force.id){
                         prevMember.forces.splice(index,1)
+                        break;
                     }
-                })
+                }
 
                 // add to new member
                 let member = {...members[force.member]}
@@ -260,8 +315,6 @@ class Layout extends Component {
                 let forces = {...prevState.forces}
                 let members = {...prevState.members}
                 let member = {...members[inputElements.member.value]}
-                console.log('inputElements')
-                console.log(inputElements)
                 members[member.id] = member
                 member.forces = member.forces ? [...member.forces, prevState.forceCount + 1] : [prevState.forceCount+1]
                 let force = {
@@ -361,8 +414,6 @@ class Layout extends Component {
     }
 
     componentDidUpdate = () => {
-        console.log('layout')
-        console.log(this.state)
     }
 
     render(){
@@ -378,7 +429,8 @@ class Layout extends Component {
                 focus: this.state.focus,
                 deleteElement: this.deleteElement,
                 addMemberForce: this.addMemberForce,
-                addNodeForce: this.addNodeForce
+                addNodeForce: this.addNodeForce,
+                addSupport: this.addSupport
             }}>
                 <div className={classes.Container}>
                     <Sidebar
@@ -387,7 +439,8 @@ class Layout extends Component {
                     <App
                         nodes={this.state.nodes}
                         members={this.state.members}
-                        forces={this.state.forces} />
+                        forces={this.state.forces}
+                        supports={this.state.supports} />
                 </div>
             </allContext.Provider>
         )

@@ -24,16 +24,19 @@ export const deleteMember = function(id, nodes, members, forces){
     // remove from parents
     let nodeA = {...nodes[member.nodeA]}
     let nodeB = {...nodes[member.nodeB]}
-    Object.keys(nodeA.members).map(index => {
+
+    for(let index = 0; index < nodeA.members.length; index++){
         if (nodeA.members[index].id === member.id){
             nodeA.members.splice(index, 1);
+            break;
         }
-    })
-    Object.keys(nodeB.members).map(index => {
+    }
+    for(let index = 0; index < nodeB.members.length; index++){
         if (nodeB.members[index].id === member.id){
             nodeB.members.splice(index, 1);
+            break;
         }
-    })
+    }
     delete members[member.id]
     nodes[nodeA.id] = nodeA;
     nodes[nodeB.id] = nodeB;
@@ -50,11 +53,12 @@ export const deleteForce = function(id, nodes, members, forces){
         node.force = null
         nodes[node.id] = node
     } else if (member){
-        Object.keys(member.forces).map(index => {
+        for(let index = 0; index < member.forces.length; index++){
             if (member.forces[index] === force.id){
                 member.forces.splice(index, 1);
+                break;
             }
-        })
+        }
         members[member.id] = member
     }
     return ({members: members, nodes: nodes, forces: forces})

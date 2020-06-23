@@ -9,7 +9,8 @@ class App extends Component {
         <Canvas 
           nodes={this.props.nodes}
           members={this.props.members}
-          forces={this.props.forces} />
+          forces={this.props.forces}
+          supports={this.props.supports} />
       </div>
     );
   }

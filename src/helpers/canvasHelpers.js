@@ -71,7 +71,13 @@ export const drawNodes = function(options = {}){
     const context = canvas.getContext("2d");
     let nodes = addNodeCoordinates.bind(this)(this.props.nodes)
     context.clearRect(0, 0, canvas.width, canvas.height);
-    
+
+    // draw supports
+    Object.keys(this.props.supports).map(key => {
+        let support = this.props.supports[key];
+        drawSingleSupport.bind(this)(support)
+    })
+
     // draw members
     Object.keys(this.props.members).map(key => { 
         let member = this.props.members[key];
@@ -184,6 +190,112 @@ export const drawSingleForce = function(force, options = {}){
         ctx.fillText('x: ' + force.endXForce + ' kN', textPos.endForce.x, textPos.endForce.y-8) 
         ctx.fillText('y: ' + force.endYForce + ' kN', textPos.endForce.x, textPos.endForce.y+8)
         ctx.closePath()
+    }
+}
+
+
+export const drawSingleSupport = function(support, options = {}){
+    let canvas = this.canvas['current'];
+    let ctx = canvas.getContext("2d");
+    let node = this.props.nodes[support.node]
+    let startPoint = {
+        x: node.coordinates.x,
+        y: node.coordinates.y
+    }
+    if (support.supportType === 'fixed'){
+        drawBase(startPoint, ctx, 40, {options})
+    } else if (support.supportType === 'pinned'){
+        startPoint.x = node.coordinates.x
+        startPoint.y = node.coordinates.y
+        let drawOptions = {
+            width: 20,
+            baseLength: 40
+        }
+        // make equilateral triangle
+        drawOptions.height = (drawOptions.width / 2) * Math.tan(Math.PI / 3)
+        drawPinned(startPoint, ctx, drawOptions, options)
+    } else if (support.supportType = 'xRoller'){
+        
+    } else if (support.supportType = 'yRoller'){
+        let drawOptions = {
+            width: 20,
+            baseLength: 40
+        }
+        drawOptions.height = (drawOptions.width / 2) * Math.tan(Math.PI / 3)
+        drawRoller(startPoint, ctx, drawOptions, options)
+    }
+}
+// draw base for supports
+const drawBase = function(startPoint, ctx, baseLength, options){
+    if (options.vertical){
+        ctx.beginPath();
+        let start = {...startPoint}
+        start.y = start.y - baseLength / 2
+        ctx.moveTo(start.x, start.y)
+        ctx.lineTo(start.x, start.y+baseLength)
+        const numberOfLines = 6
+        for (let i=0;i<numberOfLines;i++){
+            ctx.moveTo(start.x, start.y+baseLength/numberOfLines * i)
+            ctx.lineTo(start.x-10, start.y+baseLength/numberOfLines * i+8)
+        }
+        ctx.strokeStyle = options.color ? options.color : '#444444'
+        ctx.stroke();
+        ctx.closePath();
+    } else {
+        ctx.beginPath();
+        let start = {...startPoint}
+        start.x = start.x - baseLength / 2
+        ctx.moveTo(start.x, start.y)
+        ctx.lineTo(start.x+baseLength, start.y)
+        const numberOfLines = 6
+        for (let i=0;i<numberOfLines;i++){
+            ctx.moveTo(start.x+baseLength/numberOfLines * i, start.y)
+            ctx.lineTo(start.x+baseLength/numberOfLines * i+8, start.y+10)
+        }
+        ctx.strokeStyle = options.color ? options.color : '#444444'
+        ctx.stroke();
+        ctx.closePath();
+    }
+}
+
+const drawPinned = function(start, ctx, info = {}, options = {}){
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(start.x-info.width / 2, start.y+info.height)
+    ctx.lineTo(start.x+info.width/2, start.y+info.height)
+    ctx.lineTo(start.x, start.y)
+    console.log(info)
+    ctx.strokeStyle = options.color ? options.color : '#444444'
+    ctx.stroke();
+    const basePos = {
+        x: start.x,
+        y: start.y+info.height
+    }
+    drawBase(basePos, ctx, info.baseLength, options);
+}
+
+
+const drawRoller = function(start, ctx, info = {}, options = {}){
+    const width = info.width-4
+    const height = info.height-4
+    if (options.vertical){
+
+    } else {
+        console.log(start)
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y)
+        ctx.lineTo(start.x-width / 2, start.y+height)
+        ctx.lineTo(start.x+width /2, start.y+height)
+        ctx.lineTo(start.x, start.y)
+
+        console.log(info)
+        ctx.strokeStyle = options.color ? options.color : '#444444'
+        ctx.stroke();
+        const basePos = {
+            x: start.x,
+            y: start.y+info.height
+        }
+        drawBase(basePos, ctx, info.baseLength, options);
     }
 }
 
@@ -566,7 +678,7 @@ const drawSegments = function(pointA, pointB, numPoints, ctx, options = {}){
         }
         linePoints.push({x: pointB.x, y:pointB.y})
     }
-    ctx.strokeStyle = options.color ? options.color : "#444"
+    ctx.strokeStyle = options.color ? options.color : "#444";
     ctx.stroke()
     return linePoints
 }

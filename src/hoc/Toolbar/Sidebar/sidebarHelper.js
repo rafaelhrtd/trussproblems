@@ -273,7 +273,50 @@ export const nodeForce = function(){
 }
 
 export const support = function(){
-    return 1
+    const nodes = this.context.nodes
+    return{
+        element: 'support',
+        name: 'support',
+        inputElements: {
+            supportType: {
+                elementType: 'select',
+                placeholder: 'Support type',
+                name: 'supportType',
+                validation: {
+                    required: true
+                },
+                options: [
+                    {value: 'fixed',
+                        displayValue: 'Fixed'},
+                    {value: 'xRoller',
+                    displayValue: 'Roller (x-axis)'},
+                    {value: 'yRoller',
+                    displayValue: 'Roller (y-axis)'},
+                    {value: 'pinned',
+                    displayValue: 'Pinned'}
+                ]
+            },
+            node: {
+                elementType: 'select',
+                placeholder: 'Node',
+                name: 'node',
+                validation: {
+                    required: true
+                },
+                options: 
+                Object.keys(nodes).map(key => (
+                    {
+                        value: nodes[key].id,
+                        displayValue: "Node " + nodes[key].id
+                    }
+                ))
+            }
+        },
+        validation: {
+            unique: true
+        },
+        submitFunction: this.context.addSupport
+    }
 }
 
 export const Links = function(){
@@ -301,7 +344,7 @@ export const Links = function(){
         },
         support: {
             name: "Supports",
-            form: () => {return null}
+            form: support.bind(this)
         }
     })
 }
@@ -419,13 +462,8 @@ export const formValidity = function(form, context){
             }
             
         } else if (form.element === "support") {
-            let valid = true
-            Object.keys(context.supports).map(key => {
-                const support = context.supports[key]
-                if (support.node === parseInt(form.node.value)){
-                    valid = false;
-                }
-            })
+            let node = context.nodes[parseInt(form.inputElements.node.value)]
+            let valid = node.support === null
             validationTests.unique = {
                 valid: valid,
                 errorMessage: "Another support already exists at this location."
