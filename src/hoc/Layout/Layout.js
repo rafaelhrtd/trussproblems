@@ -3,8 +3,9 @@ import App from '../../App.js';
 import classes from './Layout.css';
 import Toolbar from '../Toolbar/Toolbar.js';
 import allContext from '../../context/allContext';
-import { setFocusItem, deleteMember, deleteForce } from './layoutHelper';
+import { setFocusItem, deleteMember, deleteForce, deleteMoment } from './layoutHelper';
 import Sidebar from '../Toolbar/Sidebar/Sidebar';
+import Solver from '../../Components/Solver/Solver';
 
 class Layout extends Component {
     state = {
@@ -12,10 +13,12 @@ class Layout extends Component {
         members: {},
         forces: {},
         supports: {},
+        moments: {},
         nodeCount: 0,
         memberCount: 0,
         forceCount: 0,
         supportCount: 0,
+        momentCount: 0,
         sideBarNew: true,
         sideBarObject: 'node'
     }
@@ -28,6 +31,7 @@ class Layout extends Component {
                 let node = {...nodes[inputElements.id]}
                 node.x = inputElements.x.value
                 node.y = inputElements.y.value
+                node.connectionType = inputElements.connectionType.value
                 nodes[inputElements.id] = node
                 return({nodes: nodes})
             }))
@@ -39,10 +43,12 @@ class Layout extends Component {
                 nodes[id] = {
                     x: parseFloat(inputElements.x.value),
                     y: parseFloat(inputElements.y.value),
+                    connectionType: inputElements.connectionType.value,
                     id: id,
                     members: [],
                     force: null,
-                    support: null
+                    support: null,
+                    moment: null
                 }
                 return ({
                     nodes: nodes,
@@ -60,20 +66,15 @@ class Layout extends Component {
                 let support = {...supports[inputElements.id]}
                 // edit support
                 support.node = parseInt(inputElements.node.value)
-                support.type = inputElements.supportType.value
+                support.supportType = inputElements.supportType.value
                 supports[support.id] = support
                 // fix nodes
                 let prevNode = {...nodes[prevState.supports[support.id].node]}
-                console.log('prevNode')
-                console.log(prevNode)
                 let currentNode = {...nodes[support.node]}
-                console.log('currentNode')
-                console.log(currentNode)
                 prevNode.support = null
                 currentNode.support = support.id
                 nodes[prevNode.id] = prevNode
                 nodes[currentNode.id] = currentNode
-                console.log(supports)
                 return ({
                     nodes: nodes,
                     supports: supports
@@ -115,6 +116,7 @@ class Layout extends Component {
                     let members = {...prevState.members}
                     let forces = {...prevState.forces}
                     let supports = {...prevState.supports}
+                    let moments = {...prevState.moments}
                     // remove dependents
                     Object.keys(members).map(key => {
                         const member = members[key]
@@ -142,20 +144,32 @@ class Layout extends Component {
                             delete supports[support.id]                         
                         }
                     })
+                    Object.keys(moments).map(key => {
+                        const moment = moments[key]
+                        if (moment.node === node.id){
+                            delete moments[moment.id]                         
+                        }
+                    })
                     delete nodes[node.id]
                     return({nodes: nodes, members: members, forces: forces, supports: supports})
                 })
                 break;
             case 'member':
                 this.setState(prevState => {
-                    let newElements = deleteMember(inputElements.id, prevState.nodes, prevState.members, prevState.forces)
-                    return({members: newElements.nodes, nodes: newElements.members, forces: newElements.forces})
+                    let newElements = deleteMember(inputElements.id, prevState.nodes, prevState.members, prevState.forces, prevState.members)
+                    return({members: newElements.members, nodes: newElements.nodes, forces: newElements.forces})
                 })
                 break;
             case 'force':
                 this.setState(prevState => {
                     let newElements = deleteForce(inputElements.id, prevState.nodes, prevState.members, prevState.forces)
-                    return({members: newElements.nodes, nodes: newElements.members, forces: newElements.forces})
+                    return({members: newElements.members, nodes: newElements.nodes, forces: newElements.forces})
+                })
+                break;
+            case 'moment':
+                this.setState(prevState => {
+                    let newElements = deleteMoment(inputElements.id, prevState.nodes, prevState.members, prevState.moments)
+                    return({members: newElements.members, nodes: newElements.nodes, moments: newElements.moments})
                 })
                 break;
             case 'support':
@@ -236,7 +250,8 @@ class Layout extends Component {
                         nodeA: parseInt(inputElements.nodeA.value),
                         nodeB: parseInt(inputElements.nodeB.value),
                         id: prevState.memberCount + 1,
-                        forces: []
+                        forces: [],
+                        moments: []
                     }
                     nodes[parseInt(inputElements.nodeA.value)].members.push(members[id])
                     nodes[parseInt(inputElements.nodeB.value)].members.push(members[id])
@@ -272,11 +287,11 @@ class Layout extends Component {
                         }
                     })
                 } else if (inputElements.forceType.value === 'distributed'){
-                    let accepted = ['id', 'member', 'forceType', 'startXForce', 'startYForce', 'endXForce', 'endYForce', 'startPoint', 'endPoint']
-                    force.startXForce = parseFloat(inputElements.startXForce.value)
-                    force.startYForce = parseFloat(inputElements.startYForce.value)
-                    force.endXForce = parseFloat(inputElements.endXForce.value)
-                    force.endYForce = parseFloat(inputElements.endYForce.value)
+                    let accepted = ['id', 'member', 'forceType', 'xForceStart', 'yForceStart', 'xForceEnd', 'yForceEnd', 'startPoint', 'endPoint']
+                    force.xForceStart = parseFloat(inputElements.xForceStart.value)
+                    force.yForceStart = parseFloat(inputElements.yForceStart.value)
+                    force.xForceEnd = parseFloat(inputElements.xForceEnd.value)
+                    force.yForceEnd = parseFloat(inputElements.yForceEnd.value)
                     force.startPoint = parseFloat(inputElements.startPoint.value)
                     force.endPoint = parseFloat(inputElements.endPoint.value)
                     // remove keys that are not accepted
@@ -336,11 +351,11 @@ class Layout extends Component {
                         }
                     })
                 } else if (inputElements.forceType.value === 'distributed'){
-                    let accepted = ['id', 'member', 'forceType', 'startXForce', 'startYForce', 'endXForce', 'endYForce', 'startPoint', 'endPoint']
-                    force.startXForce = parseFloat(inputElements.startXForce.value)
-                    force.startYForce = parseFloat(inputElements.startYForce.value)
-                    force.endXForce = parseFloat(inputElements.endXForce.value)
-                    force.endYForce = parseFloat(inputElements.endYForce.value)
+                    let accepted = ['id', 'member', 'forceType', 'xForceStart', 'yForceStart', 'xForceEnd', 'yForceEnd', 'startPoint', 'endPoint']
+                    force.xForceStart = parseFloat(inputElements.xForceStart.value)
+                    force.yForceStart = parseFloat(inputElements.yForceStart.value)
+                    force.xForceEnd = parseFloat(inputElements.xForceEnd.value)
+                    force.yForceEnd = parseFloat(inputElements.yForceEnd.value)
                     force.startPoint = parseFloat(inputElements.startPoint.value)
                     force.endPoint = parseFloat(inputElements.endPoint.value)
                     // remove keys that are not accepted
@@ -360,6 +375,67 @@ class Layout extends Component {
         }
     }
 
+
+
+    addMemberMoment = (inputElements) => {
+        // if editing existing moment
+        if (inputElements.edit){
+            this.setState(prevState => {
+                let moments = {...prevState.moments}
+                let moment = {...moments[inputElements.id]}
+                // update current moment
+                moment.member = parseInt(inputElements.member.value);
+                moment.moment = parseFloat(inputElements.moment.value)
+                moment.location = parseFloat(inputElements.location.value)
+                // set edited moment
+                moments[moment.id] = moment
+                // remove force from previous member
+                let members = {...prevState.members}
+                let prevMember = {...members[prevState.moments[moment.id].member]}
+                for(let index = 0; index < prevMember.moments.length; index++){
+                    if (prevMember.moments[index] === moment.id){
+                        prevMember.moments.splice(index,1)
+                        break;
+                    }
+                }
+
+                // add to new member
+                let member = {...members[moment.member]}
+                member.moments = [...member.moments]
+                member.moments.push(moment.id)
+
+                // update members
+                members[prevMember.id] = prevMember
+                members[member.id] = member
+                return({
+                    moments: moments,
+                    members: members
+                })
+            })
+        // if adding moment
+        } else {
+            this.setState(prevState => {
+                let moments = {...prevState.moments}
+                let members = {...prevState.members}
+                let member = {...members[inputElements.member.value]}
+                members[member.id] = member
+                member.moments = member.moments ? [...member.moments, prevState.momentCount + 1] : [prevState.momentCount+1]
+                let moment = {
+                    id: prevState.momentCount+1,
+                    member: parseInt(inputElements.member.value),
+                    moment: parseFloat(inputElements.moment.value),
+                    location: parseFloat(inputElements.location.value)
+                }
+                moments[prevState.momentCount + 1] = moment
+                return({
+                    moments: moments,
+                    momentCount: prevState.momentCount + 1,
+                    members: members
+                })
+            })
+        }
+    }
+
     addNodeForce = (inputElements) => {
         // if editing force
         if (inputElements.edit){
@@ -367,8 +443,8 @@ class Layout extends Component {
                 let forces = {...prevState.forces}
                 let force = {...forces[inputElements.id]}
                 force.node = parseInt(inputElements.node.value)
-                force.xForce = parseInt(inputElements.xForce.value)
-                force.yForce = parseInt(inputElements.yForce.value)
+                force.xForce = parseFloat(inputElements.xForce.value)
+                force.yForce = parseFloat(inputElements.yForce.value)
                 forces[force.id] = force
                 // remove from previous nodes
                 let nodes = {...prevState.nodes}
@@ -391,8 +467,104 @@ class Layout extends Component {
                 const force = {
                     id: prevState.forceCount+1,
                     node: parseInt(inputElements.node.value),
-                    xForce: inputElements.xForce.value,
-                    yForce: inputElements.yForce.value,
+                    xForce: parseFloat(inputElements.xForce.value),
+                    yForce: parseFloat(inputElements.yForce.value),
+                }
+                // add to current node
+                let nodes = {...prevState.nodes}
+                let node = {...nodes[force.node]}
+                node.force = force.id
+                nodes[node.id] = node
+                forces[prevState.forceCount + 1] = force
+                return({
+                    forces: forces,
+                    nodes: nodes,
+                    forceCount: prevState.forceCount + 1
+                })
+            })
+        }
+    }
+
+    addNodeMoment = (inputElements) => {
+        // if editing moment
+        if (inputElements.edit){
+            this.setState(prevState => {
+                let moments = {...prevState.moments}
+                let moment = {...moments[inputElements.id]}
+                moment.node = parseInt(inputElements.node.value)
+                moment.moment = parseFloat(inputElements.moment.value)
+                moments[moment.id] = moment;
+                // remove from previous nodes
+                let nodes = {...prevState.nodes}
+                let prevNode = {...nodes[prevState.moments[moment.id].node]}
+                prevNode.moment = null
+                nodes[prevNode.id] = prevNode
+                // add to current node
+                let node = {...nodes[moment.node]}
+                node.moment = moment.id
+                nodes[node.id] = node
+                return({
+                    moments: moments,
+                    nodes: nodes
+                })
+            })
+        // if adding new moment
+        } else {
+            this.setState(prevState => {
+                let moments = {...prevState.moments}
+                const moment = {
+                    id: prevState.momentCount+1,
+                    node: parseInt(inputElements.node.value),
+                    moment: parseFloat(inputElements.moment.value)
+                }
+                // add to current node
+                let nodes = {...prevState.nodes}
+                let node = {...nodes[moment.node]}
+                node.moment = moment.id
+                nodes[node.id] = node
+                moments[prevState.momentCount + 1] = moment
+                return({
+                    moments: moments,
+                    nodes: nodes,
+                    momentCount: prevState.momentCount + 1
+                })
+            })
+        }
+    }
+
+    addNodeForce = (inputElements) => {
+        // if editing force
+        if (inputElements.edit){
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                let force = {...forces[inputElements.id]}
+                force.node = parseInt(inputElements.node.value)
+                force.xForce = parseFloat(inputElements.xForce.value)
+                force.yForce = parseFloat(inputElements.yForce.value)
+                forces[force.id] = force
+                // remove from previous nodes
+                let nodes = {...prevState.nodes}
+                let prevNode = {...nodes[prevState.forces[force.id].node]}
+                prevNode.force = null
+                nodes[prevNode.id] = prevNode
+                // add to current node
+                let node = {...nodes[force.node]}
+                node.force = force.id
+                nodes[node.id] = node
+                return({
+                    forces: forces,
+                    nodes: nodes
+                })
+            })
+        // if adding new force
+        } else {
+            this.setState(prevState => {
+                let forces = {...prevState.forces}
+                const force = {
+                    id: prevState.forceCount+1,
+                    node: parseInt(inputElements.node.value),
+                    xForce: parseFloat(inputElements.xForce.value),
+                    yForce: parseFloat(inputElements.yForce.value),
                 }
                 // add to current node
                 let nodes = {...prevState.nodes}
@@ -414,8 +586,100 @@ class Layout extends Component {
             return {nodes: nodes}
         })
     }
+    
+    componentDidMount = () => {
+        /*
+        let test = true
+        if (test){
+            this.setState((prevState) => {
+                let id = 1
+                let nodes = {...prevState.nodes}
+                nodes[id] = {
+                    x: 0,
+                    y: 0,
+                    connectionType: 'pinned',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                id = id + 1
+                nodes[id] = {
+                    x: 1,
+                    y: 0,
+                    connectionType: 'pinned',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                id = id + 1
+                nodes[id] = {
+                    x: 1,
+                    y: 1,
+                    connectionType: 'pinned',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                id = id + 1
+                nodes[id] = {
+                    x: 2,
+                    y: 1,
+                    connectionType: 'pinned',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                return ({
+                    nodes: nodes,
+                    nodeCount: id 
+                })
+            })
 
-    componentDidUpdate = () => {
+        } else {
+            this.setState((prevState) => {
+                let id = 1
+                let nodes = {...prevState.nodes}
+                nodes[id] = {
+                    x: 0,
+                    y: 0,
+                    connectionType: 'fixed',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                id = id + 1
+                nodes[id] = {
+                    x: 1,
+                    y: 0,
+                    connectionType: 'pinned',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                id = id + 1
+                nodes[id] = {
+                    x: 2,
+                    y: 0,
+                    connectionType: 'fixed',
+                    id: id,
+                    members: [],
+                    force: null,
+                    support: null
+                }
+                return ({
+                    nodes: nodes,
+                    nodeCount: id 
+                })
+            })
+            
+        }
+        */
     }
 
     render(){
@@ -424,6 +688,8 @@ class Layout extends Component {
                 nodes: this.state.nodes,
                 members: this.state.members,
                 forces: this.state.forces,
+                supports: this.state.supports,
+                moments: this.state.moments,
                 addNode: this.addNode,
                 addNodeCoordinates: this.addNodeCoordinates,
                 addMember: this.addMember,
@@ -432,17 +698,24 @@ class Layout extends Component {
                 deleteElement: this.deleteElement,
                 addMemberForce: this.addMemberForce,
                 addNodeForce: this.addNodeForce,
-                addSupport: this.addSupport
+                addSupport: this.addSupport,
+                addNodeMoment: this.addNodeMoment,
+                addMemberMoment: this.addMemberMoment
             }}>
                 <div className={classes.Container}>
                     <Sidebar
                         sideBarNew={this.state.sideBarNew}
-                        sideBarObject={this.state.sideBarObject} />
+                        sideBarObject={this.state.sideBarObject}
+                        nodes={this.state.nodes}
+                        members={this.state.members}
+                        forces={this.state.forces}
+                        supports={this.state.supports}/>
                     <App
                         nodes={this.state.nodes}
                         members={this.state.members}
                         forces={this.state.forces}
-                        supports={this.state.supports} />
+                        supports={this.state.supports}
+                        moments={this.state.moments} />
                 </div>
             </allContext.Provider>
         )

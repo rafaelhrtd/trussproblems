@@ -6,49 +6,46 @@ class Form extends Component {
 
     render() {
         const element = this.props.element
-        const inputs = (
-            <Aux>
-                {Object.keys(element.inputElements).map(key => {
-                    const input = element.inputElements[key]
-                    if (input.onlyIf){
-                        const reqValue = input.onlyIf[Object.keys(input.onlyIf)[0]]
-                        const currentValue = element.inputElements[Object.keys(input.onlyIf)[0]].value
-                        if( reqValue === currentValue ){
-                            return (
-                                <Aux>
-                                    <label>
-                                        {element.inputElements[key].placeholder}
-                                    </label>
-                                    <Input 
-                                        key={element.inputElements[key].name} 
-                                        inputElement={element.inputElements[key]}
-                                        value={null}
-                                        changed={this.props.changed} />    
-                                </Aux>
-                                )
-                        } else {
-                            return null
-                        }
-                    } else if (!input.onlyIf) {
-                        return (
-                            <Aux>
-                                <label>
-                                    {element.inputElements[key].placeholder}
-                                </label>
-                                <Input 
-                                    key={element.inputElements[key].name} 
-                                    inputElement={element.inputElements[key]}
-                                    value={null}
-                                    changed={this.props.changed} />    
-                                    <br/>
-                            </Aux>
+        const inputs = Object.keys(element.inputElements).map(key => {
+            const input = element.inputElements[key]
+            if (input.onlyIf){
+                const reqValue = input.onlyIf[Object.keys(input.onlyIf)[0]]
+                const currentValue = element.inputElements[Object.keys(input.onlyIf)[0]].value
+                if( reqValue === currentValue ){
+                    return (
+                        <Aux
+                        key={element.inputElements[key].name} >
+                            <label>
+                                {element.inputElements[key].placeholder}
+                            </label>
+                            <Input 
+                                inputElement={element.inputElements[key]}
+                                value={null}
+                                changed={this.props.changed} />    
+                        </Aux>
                         )
-                    } else {
-                        return null
-                    }
-                    })}
-            </Aux>
-        )
+                } else {
+                    return null
+                }
+            } else if (!input.onlyIf && element.inputElements[key].name) {
+                return (
+                    <Aux
+                        key={element.inputElements[key].name} >
+                        <label>
+                            {element.inputElements[key].placeholder}
+                        </label>
+                        <Input 
+                            inputElement={element.inputElements[key]}
+                            value={null}
+                            changed={this.props.changed} />    
+                            <br/>
+                    </Aux>
+                )
+            } else {
+                return null
+            }
+        })
+        
         return (
             <form className={classes.form} onSubmit={event => this.props.submit(event)}>
                 <h1>{element.inputElements.edit ? 'Edit ' : 'New '} {this.props.element.name} {element.inputElements.edit ? element.inputElements.id : null}</h1>

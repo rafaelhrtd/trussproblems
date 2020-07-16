@@ -1,16 +1,20 @@
 export const setFocusItem = function(item, itemtype){
-    if (item === null){
-        this.setState({focus: null});
-    } else {
-        this.setState({focus: {
-            type: itemtype,
-            item: item
-        }})
+    if (this.state.focus !== item){
+        if (item === null){
+            this.setState({focus: null});
+        } else {
+            this.setState({focus: {
+                type: itemtype,
+                item: item
+            }})
+        }
+
     }
 }
 
-export const deleteMember = function(id, nodes, members, forces){
+export const deleteMember = function(id, nodes, members, forces, moments){
     let member = {...members[id]}
+    members = {...members}
     // remove dependents
     Object.keys(forces).map(key => {
         const force = forces[key]
@@ -19,6 +23,15 @@ export const deleteMember = function(id, nodes, members, forces){
             nodes = newElements.nodes
             members = newElements.members
             forces = newElements.forces     
+        }
+    })
+    Object.keys(moments).map(key => {
+        const moment = moments[key]
+        if (moment.member === member.id){
+            const newElements = deleteForce(moment.id, nodes, members, moments)
+            nodes = newElements.nodes
+            members = newElements.members
+            moments = newElements.moments     
         }
     })
     // remove from parents
@@ -45,6 +58,7 @@ export const deleteMember = function(id, nodes, members, forces){
 
 export const deleteForce = function(id, nodes, members, forces){
     let force = {...forces[id]}
+    forces = {...forces}
     delete forces[force.id]
     // remove from parents
     let node = force.node ? {...nodes[force.node]} : null
@@ -62,6 +76,28 @@ export const deleteForce = function(id, nodes, members, forces){
         members[member.id] = member
     }
     return ({members: members, nodes: nodes, forces: forces})
+}
+
+export const deleteMoment = function(id, nodes, members, moments){
+    let moment = {...moments[id]}
+    moments = {...moments}
+    delete moments[moment.id]
+    // remove from parents
+    let node = moment.node ? {...nodes[moment.node]} : null
+    let member = moment.member ? {...members[moment.member]} : null
+    if (node){
+        node.moment = null
+        nodes[node.id] = node
+    } else if (member){
+        for(let index = 0; index < member.moments.length; index++){
+            if (member.moments[index] === moment.id){
+                member.forces.splice(index, 1);
+                break;
+            }
+        }
+        members[member.id] = member
+    }
+    return ({members: members, nodes: nodes, moments: moments})
 }
 
 

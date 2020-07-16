@@ -3,7 +3,8 @@ import allContext from '../../../context/allContext';
 import classes from './Sidebar.css';
 import Form from '../../../UI/Form/Form';
 import {Links, formValidity, formFromString} from './sidebarHelper';
-import Aux from '../../../hoc/Aux/Aux'
+import Aux from '../../../hoc/Aux/Aux';
+import Solver from '../../../Components/Solver/Solver'
 
 class Sidebar extends Component {
     static contextType = allContext;
@@ -27,9 +28,6 @@ class Sidebar extends Component {
         this.setState({form: null})
     }
 
-    componentDidMount = () => {
-    }
-
     changeHandler = (event) => {
         event.persist()
         this.setState((prevState)=>{
@@ -44,6 +42,26 @@ class Sidebar extends Component {
     }
 
     componentDidUpdate(prevProps, prevState){
+        // pass state 
+        let trussChanged = (JSON.stringify(this.state.nodes) !== JSON.stringify(this.context.nodes)
+            || JSON.stringify(this.state.members) !== JSON.stringify(this.context.members)
+            || JSON.stringify(this.state.forces) !== JSON.stringify(this.context.forces)
+            || JSON.stringify(this.state.supports) !== JSON.stringify(this.context.supports))
+
+        if (JSON.stringify(this.state.nodes) !== JSON.stringify(this.context.nodes)
+            || JSON.stringify(this.state.members) !== JSON.stringify(this.context.members)
+            || JSON.stringify(this.state.forces) !== JSON.stringify(this.context.forces)
+            || JSON.stringify(this.state.supports) !== JSON.stringify(this.context.supports)){
+            
+            this.setState({
+                nodes: this.context.nodes,
+                members: this.context.members,
+                forces: this.context.forces,
+                supports: this.context.supports,
+                moments: this.context.moments
+            }, () => {
+            })
+        } 
         if (this.context.focus){
             const focus = this.context.focus
             let form = formFromString.bind(this)(focus.type)
@@ -79,6 +97,7 @@ class Sidebar extends Component {
                         <ul className={classes.options}>
                             {Object.keys(link.options).map(key => (
                                 <li className={classes.option}
+                                    key={link.options[key].title}
                                     onClick={() => this.clickedHandler(link.options[key].form())}>
                                     {link.options[key].title}
                                 </li>
@@ -124,9 +143,17 @@ class Sidebar extends Component {
 
             <div className={classes.Sidebar} onClick={() => this.context.setFocusItem(null, null)}>
                 {this.state.form === null ? (
-                    <ul className={classes.Menu}>
-                        {linkItems}
-                    </ul>
+                    <Aux>
+                        <ul className={classes.Menu}>
+                            {linkItems}
+                        </ul>
+                        <Solver
+                            nodes={{...this.state.nodes}}
+                            members={{...this.state.members}}
+                            forces={{...this.state.forces}}
+                            supports={{...this.state.supports}}
+                            moments={{...this.state.moments}} />
+                    </Aux>
                 ) : (
                     <Aux>
                         {errors}

@@ -1,0 +1,24 @@
+.Container {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0 0.5rem;
+}
+.Solver {
+    box-sizing: border-box;
+    padding: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    text-align: center;
+    color: white;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    background-color: #333;
+    margin-top: 1rem;
+}
+
+.Solver:hover, 
+.Solver:active, 
+.Solver:focus {
+    background-color: #666;
+}

@@ -42,7 +42,10 @@ class Canvas extends Component {
         if (JSON.stringify(prevProps.nodes) !== JSON.stringify(this.props.nodes) || 
             prevState.width !== this.state.width || prevState.height !== this.state.height ||
             JSON.stringify(prevProps.members) !== JSON.stringify(this.props.members) ||
-            JSON.stringify(prevProps.forces) !== JSON.stringify(this.props.forces)){
+            JSON.stringify(prevProps.forces) !== JSON.stringify(this.props.forces) || 
+            JSON.stringify(prevProps.moments) !== JSON.stringify(this.props.moments) || 
+            JSON.stringify(prevProps.supports) !== JSON.stringify(this.props.supports))
+            {
                 drawNodes.bind(this)()
         } 
 

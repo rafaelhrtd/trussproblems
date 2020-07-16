@@ -9,8 +9,7 @@ const dragLine = function(event){
         this.oldthis.canvas.current.removeEventListener("mouseup", this.oldthis.state.createMember)
     }
     drawNodes.bind(this.oldthis)({drawOnly: true})
-
-    // the cleanup is not working. Need to use state to ensure it works
+    
     this.oldthis.setState(prevState => {
         this.oldthis.canvas.current.removeEventListener("mouseup", this.oldthis.state.createMember)
         return {
@@ -71,7 +70,7 @@ export const drawNodes = function(options = {}){
     const context = canvas.getContext("2d");
     let nodes = addNodeCoordinates.bind(this)(this.props.nodes)
     context.clearRect(0, 0, canvas.width, canvas.height);
-
+    
     // draw supports
     Object.keys(this.props.supports).map(key => {
         let support = this.props.supports[key];
@@ -82,17 +81,22 @@ export const drawNodes = function(options = {}){
     Object.keys(this.props.members).map(key => { 
         let member = this.props.members[key];
         drawSingleMember.bind(this)(member);
-    }) 
+    })
 
     // draw nodes
     Object.keys(nodes).map(key => { 
         let node = nodes[key];
-        drawSingleNode.bind(this)(node, {color: "blue"})
+        drawSingleNode.bind(this)(node, {color: node.connectionType === 'pinned' ? 'white' : "blue"})
     }) 
     // draw forces 
     Object.keys(this.props.forces).map(key => {
         let force = this.props.forces[key];
         drawSingleForce.bind(this)(force)
+    })
+
+    Object.keys(this.props.moments).map(key => {
+        const moment = this.props.moments[key];
+        drawSingleMoment.bind(this)(moment)
     })
 
     
@@ -103,8 +107,9 @@ export const drawNodes = function(options = {}){
         }, () => {
             this.canvas.current.addEventListener("mousemove", this.state.nearNodeListener)
         })
-
-        this.context.addNodeCoordinates(nodes)
+        if (JSON.stringify(nodes) !== JSON.stringify(this.props.nodes)){
+            this.context.addNodeCoordinates(nodes)
+        }
     }
 }
 
@@ -113,9 +118,14 @@ export const drawSingleNode = function(node, options = {}){
     let canvas = this.canvas['current'];
     let ctx = canvas.getContext("2d");
     ctx.beginPath();
+    ctx.lineWidth = 2;
     ctx.arc(node.coordinates.x, node.coordinates.y, 5, 0, 2 * Math.PI);
     ctx.stroke(); 
-    ctx.fillStyle = options.color;
+    if (node.connectionType === 'pinned'){
+        ctx.fillStyle = options.color ? options.color : 'white';
+    } else if (node.connectionType === 'fixed'){
+        ctx.fillStyle = options.color ? options.color : 'blue';
+    }
     ctx.fill();
     ctx.fillStyle = 'black';
     ctx.font = "16px Arial";
@@ -186,11 +196,75 @@ export const drawSingleForce = function(force, options = {}){
         ctx.font = "16px Arial";
         ctx.fillStyle = options.color ? options.color : "#444"
         ctx.textAlign = textPos.startForce.alignment; 
-        ctx.fillText('x: ' + force.startXForce + ' kN', textPos.startForce.x, textPos.startForce.y-8)     
-        ctx.fillText('y: ' + force.startYForce + ' kN', textPos.startForce.x, textPos.startForce.y+8)    
-        ctx.fillText('x: ' + force.endXForce + ' kN', textPos.endForce.x, textPos.endForce.y-8) 
-        ctx.fillText('y: ' + force.endYForce + ' kN', textPos.endForce.x, textPos.endForce.y+8)
+        ctx.fillText('x: ' + force.xForceStart + ' kN', textPos.startForce.x, textPos.startForce.y-8)     
+        ctx.fillText('y: ' + force.yForceStart + ' kN', textPos.startForce.x, textPos.startForce.y+8)    
+        ctx.fillText('x: ' + force.xForceEnd + ' kN', textPos.endForce.x, textPos.endForce.y-8) 
+        ctx.fillText('y: ' + force.yForceEnd + ' kN', textPos.endForce.x, textPos.endForce.y+8)
         ctx.closePath()
+    }
+}
+
+export const drawSingleMoment = function(moment, options = {}){
+    let canvas = this.canvas['current'];
+    let ctx = canvas.getContext("2d");
+    const point = getMomentLocation.bind(this)(moment)
+    ctx.beginPath()
+    ctx.lineWidth = 1;
+    ctx.arc(point.x, point.y, 15, Math.PI / 2,  2 * Math.PI);
+    ctx.strokeStyle = options.color ? options.color : "#444";
+    ctx.stroke();
+    ctx.closePath()
+    ctx.beginPath()
+    if (moment.moment < 0){
+        ctx.moveTo(point.x, point.y + 15)
+        ctx.lineTo(point.x, point.y + 18)
+        ctx.lineTo(point.x+5, point.y + 15)
+        ctx.lineTo(point.x, point.y + 12)
+    } else {        
+        ctx.moveTo(point.x + 15, point.y)
+        ctx.lineTo(point.x+12, point.y)
+        ctx.lineTo(point.x + 15, point.y + 5)
+        ctx.lineTo(point.x+18, point.y)
+    }
+
+    ctx.strokeStyle = options.color ? options.color : "#444";
+    ctx.font = "16px Arial";
+    ctx.textAlign = 'center';
+    let text = "M: "
+    text = text + moment.moment + " kNm"
+    const textPos = {
+        x: point.x + 30,
+        y: point.y + 30
+    }
+    ctx.fillStyle = options.color ? options.color : "#444";
+    ctx.fillText(text, textPos.x, textPos.y);
+
+    ctx.fill();
+    ctx.closePath();
+}
+
+const getMomentLocation = function(moment){
+    if (moment.node){
+        const node = this.props.nodes[moment.node];
+        return {
+            x: node.coordinates.x,
+            y: node.coordinates.y
+        }
+    } else if (moment.member){
+        const member = this.props.members[moment.member]
+        const nodeA = this.props.nodes[member.nodeA]
+        const nodeB = this.props.nodes[member.nodeB]
+        const width = nodeB.coordinates.x - nodeA.coordinates.x
+        const height = nodeB.coordinates.y - nodeA.coordinates.y
+        const slope = Math.abs(width) < 1E-5 ? null : height / width
+        const location = slope !== null ? {
+            x: moment.location / 100.00 * width + nodeA.coordinates.x,
+            y: moment.location / 100.00 * width * slope + nodeA.coordinates.y,
+        } : {
+            x: nodeA.coordinates.x,
+            y: moment.location / 100.00 * height + nodeA.coordinates.y,
+        }
+        return location;
     }
 }
 
@@ -361,7 +435,7 @@ const supportBox = (support, node, mousePos) => {
 
 // get start and end to arrows in case of point loads
 const getStartEnd = function(force){
-    const lineLength = 50
+    const lineLength = 35
     let startEnd = {
         xForce: {
             start: {
@@ -569,7 +643,7 @@ export const topLine = function(force){
     // if not vertical
     if (Math.abs(nodeA.coordinates.x - nodeB.coordinates.x) > 1E-5){
         // both start and end are similar
-        if (Math.abs(force.startYForce - force.endYForce) < 1E-5){
+        if (Math.abs(force.yForceStart - force.yForceEnd) < 1E-5){
             return {
                 pointA: {
                     x: bottom.pointA.x,
@@ -581,7 +655,7 @@ export const topLine = function(force){
                 }
             }
         // start is greater
-        } else if (force.startYForce > force.endYForce){
+        } else if (force.yForceStart > force.yForceEnd){
             return({
                 pointA: {
                     x: bottom.pointA.x,
@@ -589,14 +663,14 @@ export const topLine = function(force){
                 },
                 pointB: {
                     x: bottom.pointB.x,
-                    y: bottom.pointB.y- 35 * (force.endYForce / force.startYForce)
+                    y: bottom.pointB.y- 35 * (force.yForceEnd / force.yForceStart)
                 }})
         // end is greater
-        } else if (force.startYForce < force.endYForce){
+        } else if (force.yForceStart < force.yForceEnd){
             return({
                 pointA: {
                     x: bottom.pointA.x,
-                    y: bottom.pointA.y - 35 * (force.startYForce / force.endYForce)
+                    y: bottom.pointA.y - 35 * (force.yForceStart / force.yForceEnd)
                 },
                 pointB: {
                     x: bottom.pointB.x,
@@ -605,7 +679,7 @@ export const topLine = function(force){
         }
     } else {
         // both start and end are similar
-        if (Math.abs(force.startXForce - force.endXForce) < 1E-5){
+        if (Math.abs(force.xForceStart - force.xForceEnd) < 1E-5){
             return {
                 pointA: {
                     x: bottom.pointA.x-35,
@@ -617,21 +691,21 @@ export const topLine = function(force){
                 }
             }
         // start is greater
-        } else if (force.startXForce > force.endXForce){
+        } else if (force.xForceStart > force.xForceEnd){
             return({
                 pointA: {
                     x: bottom.pointA.x-35,
                     y: bottom.pointA.y
                 },
                 pointB: {
-                    x: bottom.pointB.x - 35 * (force.endXForce / force.startXForce),
+                    x: bottom.pointB.x - 35 * (force.xForceEnd / force.xForceStart),
                     y: bottom.pointB.y
                 }})
         // end is greater
-        } else if (force.startXForce < force.endXForce){
+        } else if (force.xForceStart < force.xForceEnd){
             return({
                 pointA: {
-                    x: bottom.pointA.x - 35 * (force.startXForce / force.endXForce),
+                    x: bottom.pointA.x - 35 * (force.xForceStart / force.xForceEnd),
                     y: bottom.pointA.y
                 },
                 pointB: {
@@ -697,7 +771,7 @@ export const drawDistributedLoad = function(force, ctx, options = {}){
         ctx,
         {color: options.color ? options.color : "#444"})
     // correctly shows arrows
-    if (force.startYForce > 0) {
+    if (force.yForceStart > 0) {
         Object.keys(top).map(key => {
             if (((bottom[key].x - top[key].x) ** 2 + (bottom[key].y - top[key].y) ** 2) ** 0.5 > 10){
                 drawArrow(bottom[key], top[key], ctx, {color: options.color ? options.color : "#444"})                
@@ -761,7 +835,7 @@ const memberHeight = function(member, nodes){
 export const checkLeaveNode = function(event){
     let mousePos = getMousePosition.bind(this.oldthis)(event);
     let canvas = this.oldthis.canvas.current;
-    const distance = this.force ? 50 : 7
+    const distance = this.force ? 35 : 7
     if (this.node !== undefined){
         if (getDistance(mousePos, this.node) >= distance) {
             drawNodes.bind(this.oldthis)()
@@ -906,6 +980,7 @@ export const checkCloseElements = function(event){
         let foundMember = false;
         let foundSupport = false;
         let foundForce = false;
+        let foundMoment = false;
         Object.keys(this.props.nodes).map(key => {
             const node = this.props.nodes[key]
             if (getDistance(mousePos, node) < 7){
@@ -973,7 +1048,7 @@ export const checkCloseElements = function(event){
                         y: force.forceType === "distributed" ? textLocations.endForce.y :  textLocations.yForce.y
                     }
                 }
-                if (getDistance(mousePos, pointA) < 50 || getDistance(mousePos, pointB) < 50){
+                if (getDistance(mousePos, pointA) < 35 || getDistance(mousePos, pointB) < 35){
                     foundForce = true
                     let currentPoint = getDistance(mousePos, pointA) <= getDistance(mousePos, pointB) ? pointA : pointB
                     drawNodes.bind(this)()
@@ -996,6 +1071,37 @@ export const checkCloseElements = function(event){
             })
         }
         if (!foundNode && !foundForce && !foundSupport) {
+            Object.keys(this.props.moments).map(key =>{
+                const moment = this.props.moments[key]
+                const point = getMomentLocation.bind(this)(moment)
+                const textPos = {
+                    coordinates: {
+                        x: point.x + 30,
+                        y: point.y + 30
+                    }
+                }
+                if (getDistance(mousePos, textPos) < 35){
+                    foundMoment = true
+                    drawNodes.bind(this)()
+                    drawSingleMoment.bind(this)(moment, {color: 'blue'})
+                    this.setState((prevState) => {
+                        canvas.removeEventListener("mousedown", prevState.drawLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
+                        canvas.removeEventListener("mousedown", this.state.setFocus)
+                        return{
+                            setFocus: setFocusItem.bind({oldthis: this, item: moment, itemType: 'moment', canvas: canvas}),
+                            checkLeaveNode: checkLeaveNode.bind({oldthis: this, node: textPos, force: true})
+                        }
+                    }, () => {
+                        canvas.addEventListener("mousemove", this.state.checkLeaveNode);
+                        canvas.addEventListener("mousedown", this.state.setFocus)
+                    })
+                }
+            })
+        }
+        if (!foundNode && !foundForce && !foundSupport && !foundMoment) {
             Object.keys(this.props.members).map(key =>{
                 const member = this.props.members[key]
                 if (shortestLineDistance(mousePos, member) < 5){
@@ -1019,7 +1125,7 @@ export const checkCloseElements = function(event){
                 }
             })
         }
-        if (!foundMember && !foundNode && !foundForce && !foundSupport) {
+        if (!foundMember && !foundNode && !foundForce && !foundSupport && !foundMoment) {
             this.setState(prevState => {
                 canvas.removeEventListener("mousedown", this.state.setFocus)
                 return{

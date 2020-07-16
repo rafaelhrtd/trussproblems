@@ -10,7 +10,8 @@ class App extends Component {
           nodes={this.props.nodes}
           members={this.props.members}
           forces={this.props.forces}
-          supports={this.props.supports} />
+          supports={this.props.supports}
+          moments={this.props.moments} />
       </div>
     );
   }

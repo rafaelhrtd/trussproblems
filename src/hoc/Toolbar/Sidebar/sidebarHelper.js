@@ -24,9 +24,22 @@ export const Node = function(){
                 },
                 value: ''
             },
+            connectionType: {
+                elementType: 'select',
+                placeholder: 'Connection type',
+                name: 'connectionType',
+                validation: {
+                    required: true
+                },
+                options: [
+                    {value: "fixed", displayValue: "Fixed connection"},
+                    {value: "pinned", displayValue: "Pinned connection"}
+                ]
+            },
         },
         validation: {
-            unique: true
+            unique: true,
+            noMomentIfPinned: true
         },
         submitText: "Add node",
         submitFunction: this.context.addNode,
@@ -131,10 +144,10 @@ export const memberForce = function(){
                     forceType: "distributed"
                 }
             },
-            startXForce: {
+            xForceStart: {
                 elementType: 'text',
                 placeholder: 'Start x force',
-                name: "startXForce",
+                name: "xForceStart",
                 validation: {
                     required: true,
                     numericality: true
@@ -143,10 +156,10 @@ export const memberForce = function(){
                     forceType: "distributed"
                 }
             },
-            endXForce: {
+            xForceEnd: {
                 elementType: 'text',
                 placeholder: 'End x force',
-                name: "endXForce",
+                name: "xForceEnd",
                 validation: {
                     required: true,
                     numericality: true
@@ -155,10 +168,10 @@ export const memberForce = function(){
                     forceType: "distributed"
                 }
             },
-            startYForce: {
+            yForceStart: {
                 elementType: 'text',
                 placeholder: 'Start y force',
-                name: "startYForce",
+                name: "yForceStart",
                 validation: {
                     required: true,
                     numericality: true
@@ -167,10 +180,10 @@ export const memberForce = function(){
                     forceType: "distributed"
                 }
             },
-            endYForce: {
+            yForceEnd: {
                 elementType: 'text',
                 placeholder: 'End y force',
-                name: "endYForce",
+                name: "yForceEnd",
                 validation: {
                     required: true,
                     numericality: true
@@ -224,6 +237,52 @@ export const memberForce = function(){
     }
 }
 
+export const memberMoment = function(){
+    const members = this.context.members;
+    return {
+        element: "memberMoment",
+        name: "member moment",
+        inputElements: {
+            member: {
+                elementType: 'select',
+                placeholder: 'Member',
+                name: 'member',
+                validation: {
+                    required: true
+                },
+                options: 
+                    Object.keys(members).map(key => ({
+                        value: members[key].id,
+                        displayValue: "Member " + members[key].id
+                    }))
+            },
+            moment: {
+                elementType: 'text',
+                placeholder: 'Moment',
+                name: "moment",
+                validation: {
+                    required: true,
+                    numericality: true
+                }
+            },
+            location: {
+                elementType: 'text',
+                placeholder: 'Location (%)',
+                name: "location",
+                validation: {
+                    required: true,
+                    numericality: true
+                }
+            },
+        },
+        validation: {
+            unique: true
+        },
+        submitText: "Add moment",
+        submitFunction: this.context.addMemberMoment
+    }
+}
+
 export const nodeForce = function(){
     const nodes = this.context.nodes;
     return {
@@ -269,6 +328,46 @@ export const nodeForce = function(){
         },
         submitText: "Add force",
         submitFunction: this.context.addNodeForce
+    }
+}
+
+export const nodeMoment = function(){
+    const nodes = this.context.nodes;
+    return {
+        element: "nodeMoment",
+        name: "moment",
+        inputElements: {
+            node: {
+                elementType: 'select',
+                placeholder: 'Node',
+                name: 'node',
+                validation: {
+                    required: true
+                },
+                options: 
+                Object.keys(nodes).map(key => (
+                    {
+                        value: nodes[key].id,
+                        displayValue: "Node " + nodes[key].id
+                    }
+                ))
+            },
+            moment: {
+                elementType: 'text',
+                placeholder: 'Moment',
+                name: "moment",
+                validation: {
+                    required: true,
+                    numericality: true
+                }
+            }
+        },
+        validation: {
+            unique: true,
+            notPinned: true
+        },
+        submitText: "Add moment",
+        submitFunction: this.context.addNodeMoment
     }
 }
 
@@ -342,6 +441,19 @@ export const Links = function(){
                 }
             }
         },
+        moment: {
+            name: "Moments",
+            options: {
+                momentOnNode: {
+                    form: nodeMoment.bind(this),
+                    title: "Moment on node"
+                },
+                momentOnMember: {
+                    form: memberMoment.bind(this),
+                    title: "Moment on member"
+                }
+            }
+        },
         support: {
             name: "Supports",
             form: support.bind(this)
@@ -391,6 +503,12 @@ export const formFromString = function(string){
                 return nodeForce.bind(this)()
             }
             break;
+        case 'moment':
+            if (this.context.focus.item.node){
+                return nodeMoment.bind(this)()
+            } else if (this.context.focus.item.member) {
+                return memberMoment.bind(this)()
+            }
         case 'support':
             return support.bind(this)()
             break;
@@ -422,7 +540,8 @@ export const formValidity = function(form, context){
                 Object.keys(context.nodes).map(key => {
                     const node = context.nodes[key]
                     if (Math.abs(node.x - parseFloat(form.inputElements.x.value)) < 1E-8 && 
-                        Math.abs(node.y - parseFloat(form.inputElements.y.value)) < 1E-8){
+                        Math.abs(node.y - parseFloat(form.inputElements.y.value)) < 1E-8 &&
+                        node.id !== form.inputElements.id){
                         valid = false;
                     }
                 })
@@ -479,24 +598,70 @@ export const formValidity = function(form, context){
                 
             } else if (form.element === "support") {
                 let node = context.nodes[parseInt(form.inputElements.node.value)]
-                let valid = node.support === null
+                let valid = node.support === null || node.support === form.inputElements.id
                 validationTests.unique = {
                     valid: valid,
                     errorMessage: "Another support already exists at this location."
                 }
     
+            } else if (form.element === 'nodeMoment') {
+                let node = context.nodes[parseInt(form.inputElements.node.value)];
+                let valid = node.moment === null || node.moment === form.inputElements.id
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another moment already exists at this location"
+                };
+            } else if (form.element === 'memberMoment'){
+                let member = context.members[parseInt(form.inputElements.member.value)];
+                let valid = true;
+                const location = parseFloat(form.inputElements.location.value);
+                member.moments.map(momentID => {
+                    const moment = context.moments[momentID];
+                    if (Math.abs(moment.location - location) < 1E-7 && moment.id !== form.inputElements.id){
+                        valid = false;
+                    }
+                })
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "Another moment already exists at this location"
+                };
             }
-            if (rules.differentNodes){
-                if (form.element === "member"){
-                    let valid = true 
-                    if (form.inputElements.nodeA.value === form.inputElements.nodeB.value){
-                        valid = false
-                    }
-                    validationTests.unique = {
-                        valid: valid,
-                        errorMessage: "The nodes must be different."
-                    }
+        }
+
+        if (rules.differentNodes){
+            if (form.element === "member"){
+                let valid = true 
+                if (form.inputElements.nodeA.value === form.inputElements.nodeB.value){
+                    valid = false
                 }
+                validationTests.unique = {
+                    valid: valid,
+                    errorMessage: "The nodes must be different."
+                }
+            }
+        }
+
+        if (rules.notPinned){
+            let valid = true;
+            const node = context.nodes[form.inputElements.node.value];
+            if (node.connectionType === 'pinned'){
+                valid = false;
+            }
+            validationTests.notPinned = {
+                valid: valid,
+                errorMessage: "A moment cannot be placed on a pinned node."
+            }
+        }
+
+        if (rules.noMomentIfPinned){
+            let valid = true;
+            const node = context.nodes[form.inputElements.id];
+            if (node && node.moment){
+                valid = false;
+            }
+            validationTests.notPinned = {
+                valid: valid,
+                errorMessage: "A pinned node cannot have a moment."
             }
         }
         
