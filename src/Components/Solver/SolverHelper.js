@@ -363,7 +363,11 @@ export const linearEquationSystem = function(){
     if (externalReactions){
         const supportReactions = solvedSupports(supports, externalReactions);
         this.props.addSupportReactions(supportReactions);
-        internalB = internalReactionsB(nodes, externalReactions, supports);
+        internalB = internalReactionsB(nodes, externalReactions, forces, supports);
+        console.log('innerReactions')
+        console.log(innerReactions)
+        console.log('internalB')
+        console.log(internalB)
         const secSolution = solve(innerReactions, internalB, {innerReactions: true});
         this.props.addSolutionErrors(null);
         if (secSolution){
@@ -460,16 +464,23 @@ const solvedMembers = function(members, solution){
     return solvedMembers;
 }
 
-const internalReactionsB = function(nodes, solution, supports){
+const internalReactionsB = function(nodes, solution, forces, supports){
     let bVector = [];
     const supportReactions = solvedSupports(supports, solution);
     Object.keys(nodes).map(nodeKey => {
+        let xForce = 0;
+        let yForce = 0;
         const node = nodes[nodeKey];
         if (node.support){
-            bVector = [...bVector, -supportReactions[node.support].x, -supportReactions[node.support].y]
-        } else {
-            bVector = [...bVector, 0, 0]
+            xForce -= supportReactions[node.support].xForce;
+            yForce -= supportReactions[node.support].yForce;
         }
+        if (node.force){
+            const force = forces[node.force];
+            xForce -= force.xForce;
+            yForce -= force.yForce;
+        }
+        bVector = [...bVector, xForce, yForce]
     })
     return bVector;
 }
