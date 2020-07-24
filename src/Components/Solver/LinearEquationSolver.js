@@ -1,8 +1,7 @@
 class LinearSystem {
     constructor(a, b){
-        this.a = a;
-        this.b = b;
-        this.length = a.length;
+        this.a = a.length > 0 ? a : [[]];
+        this.b = b.length > 0 ? b : [[]];
     }
 
     divideRow = (i, divisor) => {
@@ -22,15 +21,19 @@ class LinearSystem {
         this.b[addee] = this.b[addee] + this.b[adder] * scalar
     }
 
-    length = () => {
-        return this.a.length
+    height = () => {
+        return this.a.length;
+    }
+
+    width = () => {
+        return this.a[0].length;
     }
 
     makeDiagonalNonZero = (j) => {
         // if it is zero
         if (Math.abs(this.a[j][j]) < 1E-7){
             // check row by row for a non-zero element and add it
-            for(let i = j + 1; i < this.a.length ; i++){
+            for(let i = j + 1; i < this.height() ; i++){
                 if (Math.abs(this.a[i][j]) > 1E-7){
                     this.addRows(j, i);
                     return true;
@@ -43,43 +46,69 @@ class LinearSystem {
     }
 
     // returns the computed values or false if it fails
-    solve = (attempts = null) => {
-        for (let j = 0 ; j < this.length ; j++){
-            if (this.makeDiagonalNonZero(j)){
-                this.divideRow(j, this.a[j][j])
-                for (let i = j + 1; i < this.length ; i++){
-                    this.subtractRows(i, j, this.a[i][j])
-                }
-                // if for any reason it has turned negative, make sure that it is not
-                this.divideRow(j, this.a[j][j])
-            } else {
-                console.log('cant make diagonal non-zero')
-                console.log(this.a)
-                return false
-            }
-        }
-        // diagional should be ones at this point
-        // remove top now
-        for (let i = 0 ; i < this.length ; i++){
-            for (let j = i + 1; j < this.length ; j++){
-                this.subtractRows(i, j, this.a[i][j]);
-            }
-        }
-        // check that the system was properly solved
-        for (let i = 0; i < this.length ; i++){
-            for (let j = 0; j < this.length ; j++){
-                if (j !== i && Math.abs(this.a[i][j]) > 1E-7){
-                    console.log('some zero element is not zero')
+    solve = (options) => {
+        // not enough equations
+        if (this.height() < this.width()){
+            console.log('overdetermined system')
+            return false;
+        } else if (!options.innerReactions && this.height() !== this.width()){
+            console.log('more supports are needed');
+            return false;
+        } else {
+            for (let j = 0 ; j < this.width() ; j++){
+                if (this.makeDiagonalNonZero(j)){
+                    this.divideRow(j, this.a[j][j])
+                    for (let i = j + 1; i < this.width() ; i++){
+                        this.subtractRows(i, j, this.a[i][j])
+                    }
+                    // if for any reason it has turned negative, make sure that it is not
+                    this.divideRow(j, this.a[j][j])
+                } else {
+                    console.log('cant make diagonal non-zero')
                     console.log(this.a)
+                    return false
+                }
+            }
+            // diagional should be ones at this point
+            // remove top now
+            for (let i = 0 ; i < this.width() ; i++){
+                for (let j = i + 1; j < this.width() ; j++){
+                    this.subtractRows(i, j, this.a[i][j]);
+                }
+            }
+            // check that the system was properly solved
+            for (let i = 0; i < this.width() ; i++){
+                console.log('checking solution');
+                for (let j = 0; j < this.width() ; j++){
+                    if (j !== i && Math.abs(this.a[i][j]) > 1E-7){
+                        console.log('some zero element is not zero')
+                        return false;
+                    }
+                }
+                if (Math.abs(this.a[i][i] - 1) > 1E-7){
+                    console.log('some value cannot be solved for');
                     return false;
                 }
             }
+            let solution = [...this.b] /*
+            if (this.height() > this.width()){
+                solution = [...this.b.splice(0, this.width())];
+            } */
+            // clean up solution
+            solution = solution.map(value => {
+                if (Math.abs(value) < 1E-7){
+                    return 0;
+                } 
+                return value;
+            })
+            const finalSolution = solution.splice(0, this.width());
+
+            return finalSolution;
         }
-        return this.b
     }
 }
 
-export const solve = function(a,b){
+export const solve = function(a,b, options = {}){
     const system = new LinearSystem([...a],[...b]);
-    return system.solve()
+    return system.solve(options)
 }

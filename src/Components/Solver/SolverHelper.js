@@ -1,5 +1,5 @@
 import {solve} from './LinearEquationSolver';
-import { support } from '../../hoc/Toolbar/Sidebar/sidebarHelper';
+import { support, memberMoment } from '../../hoc/Toolbar/Sidebar/sidebarHelper';
 
 export const allNodesConnected = function(){
     let nodes = {...this.props.nodes};
@@ -343,6 +343,7 @@ export const linearEquationSystem = function(){
     const nodes = this.props.nodes  === undefined ? {} : this.props.nodes
     const supports = this.props.supports === undefined ? {} : this.props.supports
     const forces = this.props.forces === undefined ? {} : this.props.forces;
+    const members = this.props.members === undefined ? {} : this.props.members;
     const sections = getSections.bind(this)() 
     // moments
     const connections = getConnections(sections);
@@ -355,25 +356,122 @@ export const linearEquationSystem = function(){
     let bMatrix = [...knownForces, ...knownMoments];
     let textA = ""
     let textB = ""
-    aMatrix.map(innerArray => {
-        Object.keys(innerArray).map(index => {
-            const val = innerArray[index];
-            textA = textA + val;
-            if (index < innerArray.length - 1){
-                textA = textA + ", "
+    const innerReactions = internalReactionsA(nodes, members);
+    const externalReactions = solve(aMatrix, bMatrix);
+    let internalB = [];
+    // if the external reactions have been successfully solved
+    if (externalReactions){
+        const supportReactions = solvedSupports(supports, externalReactions);
+        this.props.addSupportReactions(supportReactions);
+        internalB = internalReactionsB(nodes, externalReactions, supports);
+        const secSolution = solve(innerReactions, internalB, {innerReactions: true});
+        this.props.addSolutionErrors(null);
+        if (secSolution){
+            const memberReactions = solvedMembers(members, secSolution);
+            this.props.addMemberReactions(memberReactions);
+            this.props.addSolutionErrors(null);
+        } else {
+            this.props.addSolutionErrors({error: "The problem is internally indeterminate."})
+        }
+    } else {
+        this.props.addSolutionErrors({error: "The problem is externally indeterminate."})
+    }
+}
+
+// set up A matrix for the internal reactions in the structure
+const internalReactionsA = function(nodes, members){
+    let internalReactions = [];
+    Object.keys(nodes).map(nodeKey => {
+        let xForces = [];
+        let yForces = [];
+        const nodeA = nodes[nodeKey];
+        // iterate through members
+        Object.keys(members).map(memberKey => {
+            const member = members[memberKey];
+            if (member.nodeA === nodeA.id || member.nodeB === nodeA.id){
+                const nodeB = member.nodeA === nodeA.id ? nodes[member.nodeB] : nodes[member.nodeA];
+                const distance = interNodalDistance(nodeA, nodeB);
+                const angle = Math.atan2(distance.y, distance.x);
+                xForces = [...xForces, Math.cos(angle)];
+                yForces = [...yForces, Math.sin(angle)];
             } else {
-                textA = textA + "; "
+                xForces = [...xForces, 0];
+                yForces = [...yForces, 0];
             }
         })
+        internalReactions = cleanMatrix([...internalReactions, xForces, yForces]);
+    }) 
+    return cleanMatrix(internalReactions);
+}
+
+const cleanMatrix = function(matrix){
+    for (let  i = 0 ; i < matrix.length ; i++){
+        for (let j = 0 ; j < matrix[i].length ; j++){
+            if (Math.abs(matrix[i][j]) < 1E-7){
+                matrix[i][j] = 0;
+            }
+        }
+    }
+    return matrix;
+}
+
+// relates the external forces to their supports
+const solvedSupports = function(supports, solution){
+    let solvedSupports = {}
+    let counter = 0;
+    Object.keys(supports).map(supportKey => {
+        const support = supports[supportKey];
+        solvedSupports[support.id] = {...support}
+        let solvedSupport = solvedSupports[support.id];
+        if (support.supportType === 'fixed'){
+            solvedSupport.xForce = solution[counter];
+            counter++;
+            solvedSupport.yForce = solution[counter];
+            counter++;
+            solvedSupport.moment = solution[counter];
+            counter++;
+        } else if (support.supportType === 'pinned'){
+            solvedSupport.xForce = solution[counter];
+            counter++;
+            solvedSupport.yForce = solution[counter];
+            counter++;
+        } else if (support.supportType === 'xRoller'){
+            solvedSupport.xForce = solution[counter];
+            solvedSupport.yForce = 0;
+            counter++;
+        } else if (support.supportType === 'yRoller'){
+            solvedSupport.xForce = 0;
+            solvedSupport.yForce = solution[counter];
+            counter++;
+        } 
     })
-    bMatrix.map(value => {
-        textB = textB + value + ", "
+    return solvedSupports;
+}
+
+const solvedMembers = function(members, solution){
+    let solvedMembers = {};
+    let counter = 0;
+    Object.keys(members).map(memberKey => {
+        const member = {...members[memberKey]};
+        member.force = solution[counter];
+        counter++;
+        solvedMembers[memberKey] = member;
     })
-    console.log('aMatrix')
-    console.log(aMatrix)
-    console.log('bMatrix')
-    console.log(bMatrix)
-    const solution = solve(aMatrix, bMatrix);
+    return solvedMembers;
+}
+
+const internalReactionsB = function(nodes, solution, supports){
+    let bVector = [];
+    const supportReactions = solvedSupports(supports, solution);
+    Object.keys(nodes).map(nodeKey => {
+        const node = nodes[nodeKey];
+        if (node.support){
+            bVector = [...bVector, -supportReactions[node.support].x, -supportReactions[node.support].y]
+        } else {
+            bVector = [...bVector, 0, 0]
+        }
+    })
+    return bVector;
 }
 
 const forceVectors = function(sections, nodes, supports, connections){
@@ -613,8 +711,6 @@ const resultantMomentVector = function(connections, sections){
                     sectionMoment += equivForce.xForce.amount * distance.y;
                 }
             })
-            console.log(member)
-            console.log(moments);
             member.moments.map(momentID => {
                 const moment = moments[momentID]
                 sectionMoment += moment.moment

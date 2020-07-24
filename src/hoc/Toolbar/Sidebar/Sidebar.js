@@ -152,7 +152,12 @@ class Sidebar extends Component {
                             members={{...this.state.members}}
                             forces={{...this.state.forces}}
                             supports={{...this.state.supports}}
-                            moments={{...this.state.moments}} />
+                            moments={{...this.state.moments}}
+                            addSupportReactions={this.context.addSupportReactions}
+                            addMemberReactions={this.context.addMemberReactions}
+                            addSolutionErrors={this.context.addSolutionErrors}
+                            errors={this.context.solutionErrors}
+                            solve={this.context.solved} />
                     </Aux>
                 ) : (
                     <Aux>

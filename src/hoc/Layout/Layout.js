@@ -19,8 +19,33 @@ class Layout extends Component {
         forceCount: 0,
         supportCount: 0,
         momentCount: 0,
+        supportReactions: {},
+        solutionErrors: {},
+        memberReactions: {},
+        solved: false,
         sideBarNew: true,
         sideBarObject: 'node'
+    }
+
+    addSupportReactions = (reactions) => {
+        if (JSON.stringify(reactions) !== JSON.stringify(this.state.supportReactions)){
+            this.setState({supportReactions: reactions});
+        }
+    }
+
+    addSolutionErrors = (errors) => {
+        if (JSON.stringify(errors) !== JSON.stringify(this.state.solutionErrors)){
+            this.setState({solutionErrors: errors, solved: false});
+        }
+        if (!errors && (JSON.stringify(errors) !== JSON.stringify(this.state.solutionErrors))){
+            this.setState({solved: true});
+        }
+    }
+
+    addMemberReactions = (reactions) => {
+        if (JSON.stringify(reactions) !== JSON.stringify(this.state.memberReactions)){
+            this.setState({memberReactions: reactions});
+        }
     }
 
     addNode = (inputElements) => {
@@ -588,7 +613,6 @@ class Layout extends Component {
     }
     
     componentDidMount = () => {
-        /*
         let test = true
         if (test){
             this.setState((prevState) => {
@@ -679,7 +703,6 @@ class Layout extends Component {
             })
             
         }
-        */
     }
 
     render(){
@@ -690,6 +713,9 @@ class Layout extends Component {
                 forces: this.state.forces,
                 supports: this.state.supports,
                 moments: this.state.moments,
+                addSupportReactions: this.addSupportReactions,
+                addMemberReactions: this.addMemberReactions,
+                addSolutionErrors: this.addSolutionErrors,
                 addNode: this.addNode,
                 addNodeCoordinates: this.addNodeCoordinates,
                 addMember: this.addMember,
@@ -697,10 +723,13 @@ class Layout extends Component {
                 focus: this.state.focus,
                 deleteElement: this.deleteElement,
                 addMemberForce: this.addMemberForce,
+                solutionErrors: this.state.solutionErrors,
+                supportReactions: this.state.supportReactions,
+                memberReactions: this.state.memberReactions,
                 addNodeForce: this.addNodeForce,
                 addSupport: this.addSupport,
                 addNodeMoment: this.addNodeMoment,
-                addMemberMoment: this.addMemberMoment
+                addMemberMoment: this.addMemberMoment,
             }}>
                 <div className={classes.Container}>
                     <Sidebar
@@ -715,7 +744,10 @@ class Layout extends Component {
                         members={this.state.members}
                         forces={this.state.forces}
                         supports={this.state.supports}
-                        moments={this.state.moments} />
+                        moments={this.state.moments}
+                        solved={this.state.solved}
+                        supportReactions={this.state.supportReactions}
+                        memberReactions={this.state.memberReactions} />
                 </div>
             </allContext.Provider>
         )

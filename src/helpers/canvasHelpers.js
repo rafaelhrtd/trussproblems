@@ -72,10 +72,20 @@ export const drawNodes = function(options = {}){
     context.clearRect(0, 0, canvas.width, canvas.height);
     
     // draw supports
-    Object.keys(this.props.supports).map(key => {
-        let support = this.props.supports[key];
-        drawSingleSupport.bind(this)(support)
-    })
+    console.log('this.props.solved')
+    console.log(this.props.solved)
+    if (!this.props.solved){
+        Object.keys(this.props.supports).map(key => {
+            let support = this.props.supports[key];
+            drawSingleSupport.bind(this)(support)
+        })
+    } else {
+        console.log('solved')
+        Object.keys(this.props.supportReactions).map(key => {
+            const reaction = this.props.supportReactions[key];
+            drawSingleForce.bind(this)(reaction, {color: 'red'});
+        })
+    }
 
     // draw members
     Object.keys(this.props.members).map(key => { 

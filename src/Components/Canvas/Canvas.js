@@ -44,7 +44,8 @@ class Canvas extends Component {
             JSON.stringify(prevProps.members) !== JSON.stringify(this.props.members) ||
             JSON.stringify(prevProps.forces) !== JSON.stringify(this.props.forces) || 
             JSON.stringify(prevProps.moments) !== JSON.stringify(this.props.moments) || 
-            JSON.stringify(prevProps.supports) !== JSON.stringify(this.props.supports))
+            JSON.stringify(prevProps.supports) !== JSON.stringify(this.props.supports) ||
+            prevProps.solved !== this.props.solved)
             {
                 drawNodes.bind(this)()
         } 

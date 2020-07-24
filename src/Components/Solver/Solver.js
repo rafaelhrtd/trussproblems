@@ -33,19 +33,9 @@ class Solver extends Component {
 
 
     render(){
-        linearEquationSystem.bind(this)()
         return(
             <Aux>
-                { this.state.nodesConnected ? (
-                    <div>
-                        connected
-                    </div>
-                ) : (
-                    <div>
-                        disconnected
-                    </div>
-                )}
-                <Button className='Solver'>
+                <Button className='Solver' clicked={linearEquationSystem.bind(this)}>
                     Solve
                 </Button>
             </Aux>
