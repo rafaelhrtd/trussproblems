@@ -81,9 +81,13 @@ export const drawNodes = function(options = {}){
         })
     } else {
         console.log('solved')
+        console.log(this.props.supportReactions)
         Object.keys(this.props.supportReactions).map(key => {
             const reaction = this.props.supportReactions[key];
             drawSingleForce.bind(this)(reaction, {color: 'red'});
+            if (reaction.moment){
+                drawSingleMoment.bind(this)(reaction, {color: 'red'});
+            }
         })
     }
 
