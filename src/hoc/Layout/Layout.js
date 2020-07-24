@@ -613,6 +613,7 @@ class Layout extends Component {
     }
     
     componentDidMount = () => {
+        /*
         let test = true
         if (test){
             this.setState((prevState) => {
@@ -703,6 +704,7 @@ class Layout extends Component {
             })
             
         }
+        */
     }
 
     render(){
