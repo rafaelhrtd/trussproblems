@@ -229,7 +229,7 @@ export const drawSingleMoment = function(moment, options = {}){
     ctx.stroke();
     ctx.closePath()
     ctx.beginPath()
-    if (moment.moment < 0){
+    if (moment.moment > 0){
         ctx.moveTo(point.x, point.y + 15)
         ctx.lineTo(point.x, point.y + 18)
         ctx.lineTo(point.x+5, point.y + 15)
