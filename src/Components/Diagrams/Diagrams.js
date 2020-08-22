@@ -84,96 +84,69 @@ class Diagrams extends Component {
         const momentColor = "#69cc73"
 
         const normal = (
-            <ResponsiveContainer width={'100%'} height={300}>
+            <ResponsiveContainer width={'99%'} aspect={2}>
                 <ScatterChart data={data} >
                     <Scatter 
                         name="A school" 
                         data={data.n} fill={normalColor} 
-                        line={{stroke: normalColor, strokeWidth: 2}} 
+                        line={{stroke: normalColor, strokeWidth: 3}} 
                         shape={<RenderNoShape />}/>
                     <CartesianGrid stroke="#ccc" />
                     <XAxis 
-                        label={{ value: '[m]', position: 'insideBottom'}}
                         type="number" 
                         dataKey="x" 
                         name="position"
-                        domain={this.getYDomain(data.n)}
-                        height={50}/>
+                        domain={this.getYDomain(data.n)}/>
                     <YAxis 
-                        width={70}
                         type="number" 
                         dataKey="y" 
                         name="moment" >
-                            <Label
-                                value="[kN]"
-                                angle={-90}
-                                offset={20}
-                                position="insideLeft"
-                            />
                     </YAxis>
                 </ScatterChart>
             </ResponsiveContainer>
         );
 
         const shear = (
-            <ResponsiveContainer width={'100%'} height={300}>
+            <ResponsiveContainer width={'99%'} aspect={2}>
                 <ScatterChart data={data} >
                     <Scatter 
                         name="A school" 
                         data={data.s} fill={shearColor} 
-                        line={{stroke: shearColor, strokeWidth: 2}} 
+                        line={{stroke: shearColor, strokeWidth: 3}} 
                         shape={<RenderNoShape />}/>
                     <CartesianGrid stroke="#ccc" />
                     <XAxis 
-                        label={{ value: '[m]', position: 'insideBottom'}}
                         type="number" 
                         dataKey="x" 
                         name="position" 
-                        domain={this.getYDomain(data.s)}
-                        height={50}/>
+                        domain={this.getYDomain(data.s)}/>
                     <YAxis 
-                        width={70}
                         type="number" 
                         dataKey="y" 
                         name="moment" >
-                            <Label
-                                value="[kN]"
-                                angle={-90}
-                                offset={20}
-                                position="insideLeft"
-                            />
                     </YAxis>
                 </ScatterChart>
             </ResponsiveContainer>
         );
 
         const moment = (
-            <ResponsiveContainer width={'100%'} height={300}>
+            <ResponsiveContainer width={'99%'} aspect={2}>
                 <ScatterChart data={data} >
                     <Scatter 
                         name="A school" 
                         data={data.m} fill={momentColor} 
-                        line={{stroke: momentColor, strokeWidth: 2}} 
+                        line={{stroke: momentColor, strokeWidth: 3}} 
                         shape={<RenderNoShape />}/>
                     <CartesianGrid stroke="#ccc" />
                     <XAxis 
-                        label={{ value: '[m]', position: 'insideBottom'}}
                         type="number" 
                         dataKey="x" 
                         name="position" 
-                        domain={this.getYDomain(data.m)}
-                        height={50}/>
+                        domain={this.getYDomain(data.m)}/>
                     <YAxis 
-                        width={70}
                         type="number" 
                         dataKey="y" 
                         name="moment" >
-                            <Label
-                                value="[kN-m]"
-                                angle={-90}
-                                offset={20}
-                                position="insideLeft"
-                            />
                     </YAxis>
                 </ScatterChart>
             </ResponsiveContainer>
@@ -188,7 +161,6 @@ class Diagrams extends Component {
                         {normal}
                     </div>
                     <div className={classes.information}>
-                        <h4>Summary</h4>
                         <Summary data={nInfo} unit="f" />
 
                     </div>
@@ -200,7 +172,6 @@ class Diagrams extends Component {
                         {shear}
                     </div>
                     <div className={classes.information}>
-                        <h4>Summary</h4>
                         <Summary data={sInfo} unit="f" />
                     </div>
                 </div>
@@ -212,7 +183,6 @@ class Diagrams extends Component {
 
                     </div>
                     <div className={classes.information}>
-                        <h4>Summary</h4>
                         <Summary data={mInfo} unit="m" />
                     </div>
                 </div>
