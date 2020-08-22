@@ -188,6 +188,10 @@ module.exports = {
                         ],
                       },
                     },
+                    {
+                      // Loads a SASS/SCSS file and compiles it to CSS
+                      loader: require.resolve('sass-loader')
+                    },
                   ],
                 },
                 extractTextPluginOptions
@@ -243,6 +247,10 @@ module.exports = {
                           }),
                         ],
                       },
+                    },
+                    {
+                      // Loads a SASS/SCSS file and compiles it to CSS
+                      loader: 'sass-loader'
                     },
                   ],
                 },
