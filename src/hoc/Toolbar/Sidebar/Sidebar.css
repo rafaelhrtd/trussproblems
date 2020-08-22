@@ -44,6 +44,16 @@
     display: none;
 }
 
+.solved h1 {
+    font-size: 1.25rem;
+    padding: 1rem 0.5rem;
+    margin: 0;
+}
+
+.solved p {
+    margin: 0;
+    padding: 1rem 0.5rem;
+}
 .options .option {
     color: black;
     background-color: #CCC;

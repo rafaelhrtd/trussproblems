@@ -37,8 +37,8 @@ class Layout extends Component {
         if (JSON.stringify(errors) !== JSON.stringify(this.state.solutionErrors)){
             this.setState({solutionErrors: errors, solved: false});
         }
-        if (!errors && (JSON.stringify(errors) !== JSON.stringify(this.state.solutionErrors))){
-            this.setState({solved: true});
+        if (!errors){
+            this.setState({solved: true, focus: null});
         }
     }
 
@@ -400,67 +400,6 @@ class Layout extends Component {
         }
     }
 
-
-
-    addMemberMoment = (inputElements) => {
-        // if editing existing moment
-        if (inputElements.edit){
-            this.setState(prevState => {
-                let moments = {...prevState.moments}
-                let moment = {...moments[inputElements.id]}
-                // update current moment
-                moment.member = parseInt(inputElements.member.value);
-                moment.moment = parseFloat(inputElements.moment.value)
-                moment.location = parseFloat(inputElements.location.value)
-                // set edited moment
-                moments[moment.id] = moment
-                // remove force from previous member
-                let members = {...prevState.members}
-                let prevMember = {...members[prevState.moments[moment.id].member]}
-                for(let index = 0; index < prevMember.moments.length; index++){
-                    if (prevMember.moments[index] === moment.id){
-                        prevMember.moments.splice(index,1)
-                        break;
-                    }
-                }
-
-                // add to new member
-                let member = {...members[moment.member]}
-                member.moments = [...member.moments]
-                member.moments.push(moment.id)
-
-                // update members
-                members[prevMember.id] = prevMember
-                members[member.id] = member
-                return({
-                    moments: moments,
-                    members: members
-                })
-            })
-        // if adding moment
-        } else {
-            this.setState(prevState => {
-                let moments = {...prevState.moments}
-                let members = {...prevState.members}
-                let member = {...members[inputElements.member.value]}
-                members[member.id] = member
-                member.moments = member.moments ? [...member.moments, prevState.momentCount + 1] : [prevState.momentCount+1]
-                let moment = {
-                    id: prevState.momentCount+1,
-                    member: parseInt(inputElements.member.value),
-                    moment: parseFloat(inputElements.moment.value),
-                    location: parseFloat(inputElements.location.value)
-                }
-                moments[prevState.momentCount + 1] = moment
-                return({
-                    moments: moments,
-                    momentCount: prevState.momentCount + 1,
-                    members: members
-                })
-            })
-        }
-    }
-
     addNodeForce = (inputElements) => {
         // if editing force
         if (inputElements.edit){
@@ -613,100 +552,64 @@ class Layout extends Component {
     }
     
     componentDidMount = () => {
-        /*
-        let test = true
-        if (test){
-            this.setState((prevState) => {
-                let id = 1
-                let nodes = {...prevState.nodes}
-                nodes[id] = {
-                    x: 0,
-                    y: 0,
-                    connectionType: 'pinned',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                id = id + 1
-                nodes[id] = {
-                    x: 1,
-                    y: 0,
-                    connectionType: 'pinned',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                id = id + 1
-                nodes[id] = {
-                    x: 1,
-                    y: 1,
-                    connectionType: 'pinned',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                id = id + 1
-                nodes[id] = {
-                    x: 2,
-                    y: 1,
-                    connectionType: 'pinned',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                return ({
-                    nodes: nodes,
-                    nodeCount: id 
-                })
+        this.addNode({
+            x: {value: 0},
+            y: {value: 0},
+            connectionType: {value: 'fixed'},
+        })
+        this.addNode({
+            x: {value: 0},
+            y: {value: 6.5},
+            connectionType: {value: 'fixed'},
+        })
+        this.addNode({
+            x: {value: 8},
+            y: {value: 5},
+            connectionType: {value: 'pinned'},
+        })
+        this.addNode({
+            x: {value: 8},
+            y: {value: 0},
+            connectionType: {value: 'fixed'},
+        })
+        setTimeout(() => {
+            this.addSupport({
+                supportType: {value: 'pinned'},
+                node: {value: 1},
             })
-
-        } else {
-            this.setState((prevState) => {
-                let id = 1
-                let nodes = {...prevState.nodes}
-                nodes[id] = {
-                    x: 0,
-                    y: 0,
-                    connectionType: 'fixed',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                id = id + 1
-                nodes[id] = {
-                    x: 1,
-                    y: 0,
-                    connectionType: 'pinned',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                id = id + 1
-                nodes[id] = {
-                    x: 2,
-                    y: 0,
-                    connectionType: 'fixed',
-                    id: id,
-                    members: [],
-                    force: null,
-                    support: null
-                }
-                return ({
-                    nodes: nodes,
-                    nodeCount: id 
-                })
+            this.addSupport({
+                supportType: {value: 'pinned'},
+                node: {value: 4},
             })
-            
-        }
-        */
+            this.addMember({
+                nodeA: {value: 1},
+                nodeB: {value: 2}
+            })
+            this.addMember({
+                nodeA: {value: 2},
+                nodeB: {value: 3}
+            })
+            this.addMember({
+                nodeA: {value: 3},
+                nodeB: {value: 4}
+            })
+        }, 500)
     }
 
+    backToBuilder = () => {
+        this.setState({
+            solved: false,
+            supportReactions: {},
+            memberReactions: {}
+        });
+    }
+
+    removeFocus = () => {
+        this.setState({focus: null});
+    }
+    addTrussCheck = (isTruss) => {
+        this.setState({isTruss: isTruss})
+    }
     render(){
         return (
             <allContext.Provider value={{
@@ -715,8 +618,11 @@ class Layout extends Component {
                 forces: this.state.forces,
                 supports: this.state.supports,
                 moments: this.state.moments,
+                backToBuilder: this.backToBuilder,
+                addTrussCheck: this.addTrussCheck,
                 addSupportReactions: this.addSupportReactions,
                 addMemberReactions: this.addMemberReactions,
+                removeFocus: this.removeFocus,
                 addSolutionErrors: this.addSolutionErrors,
                 addNode: this.addNode,
                 addNodeCoordinates: this.addNodeCoordinates,
@@ -726,12 +632,12 @@ class Layout extends Component {
                 deleteElement: this.deleteElement,
                 addMemberForce: this.addMemberForce,
                 solutionErrors: this.state.solutionErrors,
+                solved: this.state.solved,
                 supportReactions: this.state.supportReactions,
                 memberReactions: this.state.memberReactions,
                 addNodeForce: this.addNodeForce,
                 addSupport: this.addSupport,
-                addNodeMoment: this.addNodeMoment,
-                addMemberMoment: this.addMemberMoment,
+                addNodeMoment: this.addNodeMoment
             }}>
                 <div className={classes.Container}>
                     <Sidebar

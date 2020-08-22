@@ -31,10 +31,12 @@ class Canvas extends Component {
     }
     componentDidMount = () => {
         this.handleResize();
+        console.log('did mount')
         window.addEventListener('resize', this.handleResize);
     }
 
-    componentWillUmount = () => {
+    componentWillUnmount = () => {
+        console.log('unmounted')
         window.removeEventListener('resize', this.handleResize);      
     }
 

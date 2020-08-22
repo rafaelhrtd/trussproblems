@@ -237,52 +237,6 @@ export const memberForce = function(){
     }
 }
 
-export const memberMoment = function(){
-    const members = this.context.members;
-    return {
-        element: "memberMoment",
-        name: "member moment",
-        inputElements: {
-            member: {
-                elementType: 'select',
-                placeholder: 'Member',
-                name: 'member',
-                validation: {
-                    required: true
-                },
-                options: 
-                    Object.keys(members).map(key => ({
-                        value: members[key].id,
-                        displayValue: "Member " + members[key].id
-                    }))
-            },
-            moment: {
-                elementType: 'text',
-                placeholder: 'Moment',
-                name: "moment",
-                validation: {
-                    required: true,
-                    numericality: true
-                }
-            },
-            location: {
-                elementType: 'text',
-                placeholder: 'Location (%)',
-                name: "location",
-                validation: {
-                    required: true,
-                    numericality: true
-                }
-            },
-        },
-        validation: {
-            unique: true
-        },
-        submitText: "Add moment",
-        submitFunction: this.context.addMemberMoment
-    }
-}
-
 export const nodeForce = function(){
     const nodes = this.context.nodes;
     return {
@@ -443,16 +397,7 @@ export const Links = function(){
         },
         moment: {
             name: "Moments",
-            options: {
-                momentOnNode: {
-                    form: nodeMoment.bind(this),
-                    title: "Moment on node"
-                },
-                momentOnMember: {
-                    form: memberMoment.bind(this),
-                    title: "Moment on member"
-                }
-            }
+            form: nodeMoment.bind(this)
         },
         support: {
             name: "Supports",
@@ -506,8 +451,6 @@ export const formFromString = function(string){
         case 'moment':
             if (this.context.focus.item.node){
                 return nodeMoment.bind(this)()
-            } else if (this.context.focus.item.member) {
-                return memberMoment.bind(this)()
             }
         case 'support':
             return support.bind(this)()
@@ -607,20 +550,6 @@ export const formValidity = function(form, context){
             } else if (form.element === 'nodeMoment') {
                 let node = context.nodes[parseInt(form.inputElements.node.value)];
                 let valid = node.moment === null || node.moment === form.inputElements.id
-                validationTests.unique = {
-                    valid: valid,
-                    errorMessage: "Another moment already exists at this location"
-                };
-            } else if (form.element === 'memberMoment'){
-                let member = context.members[parseInt(form.inputElements.member.value)];
-                let valid = true;
-                const location = parseFloat(form.inputElements.location.value);
-                member.moments.map(momentID => {
-                    const moment = context.moments[momentID];
-                    if (Math.abs(moment.location - location) < 1E-7 && moment.id !== form.inputElements.id){
-                        valid = false;
-                    }
-                })
                 validationTests.unique = {
                     valid: valid,
                     errorMessage: "Another moment already exists at this location"

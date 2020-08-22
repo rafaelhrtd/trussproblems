@@ -13,6 +13,7 @@ class LinearSystem {
         this.a[subtractee] = Object.keys(this.a[subtractee]).map(i => (
              this.a[subtractee][i] - scalar * this.a[subtractor][i]))
         this.b[subtractee] = this.b[subtractee] - this.b[subtractor] * scalar
+        
     }
 
     addRows = (addee, adder, scalar = 1) => {
@@ -45,6 +46,17 @@ class LinearSystem {
         }
     }
 
+    print = () => {
+        let text = ''
+        for (let i = 0 ; i < this.a.length ; i++){
+            for (let j = 0 ; j < this.a[i].length ; j ++){
+                text += this.a[i][j] + ', '
+            }
+            text += '; '
+        }
+        //console.log(text);
+    }
+
     // returns the computed values or false if it fails
     solve = (options) => {
         // not enough equations
@@ -58,14 +70,15 @@ class LinearSystem {
             for (let j = 0 ; j < this.width() ; j++){
                 if (this.makeDiagonalNonZero(j)){
                     this.divideRow(j, this.a[j][j])
-                    for (let i = j + 1; i < this.width() ; i++){
+                    for (let i = j + 1; i < this.height() ; i++){
                         this.subtractRows(i, j, this.a[i][j])
                     }
                     // if for any reason it has turned negative, make sure that it is not
                     this.divideRow(j, this.a[j][j])
+                    this.print();
+
                 } else {
                     console.log('cant make diagonal non-zero')
-                    console.log(this.a)
                     return false
                 }
             }
@@ -102,13 +115,15 @@ class LinearSystem {
                 return value;
             })
             const finalSolution = solution.splice(0, this.width());
-
             return finalSolution;
         }
     }
 }
 
 export const solve = function(a,b, options = {}){
+    console.log('solving')
+    console.log(a);
+    console.log(b);
     const system = new LinearSystem([...a],[...b]);
     return system.solve(options)
 }

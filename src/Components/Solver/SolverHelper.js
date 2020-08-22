@@ -1,5 +1,5 @@
 import {solve} from './LinearEquationSolver';
-import { support, memberMoment } from '../../hoc/Toolbar/Sidebar/sidebarHelper';
+import { support } from '../../hoc/Toolbar/Sidebar/sidebarHelper';
 
 export const allNodesConnected = function(){
     let nodes = {...this.props.nodes};
@@ -260,47 +260,6 @@ const joinSections = function(sectionA, sectionB, sections){
     return sections;
 }
 
-// get the nodes from which the moments will be evaluated
-const momentNodes = function(nodes, supports = {}, sections){
-    let momentNodes = []
-    const reactionNumber = numberOfReactions(supports, nodes);
-    
-    Object.keys(sections).map(key => {
-        const section = sections[key]
-        const sectionSupports = [] 
-        let sectionNodes = []
-        section.nodes.map(nodeID => {
-            const node = nodes[nodeID];
-            if (node.support){
-                sectionSupports.push(node);
-            }
-        })
-        for (let i = 0 ; i < section.nodes.length ; i++){
-            const node = nodes[section.nodes[i]];
-            if (node.support){
-                if (momentNodes.length < reactionNumber - 2){
-                    if (!sectionNodes.includes(node.id) && sectionSupports.length > 1){
-                        momentNodes = [...momentNodes, {...node, section: section.id}]
-                        sectionNodes.push(node.id)
-                    }
-                    for (let j = 0 ; j < node.members.length ; j++ ){
-                        const member = node.members[j];
-                        let otherNode = member.nodeA === node.id ? nodes[member.nodeB] : nodes[member.nodeA]
-                        if (momentNodes.length === reactionNumber - 2){
-                            break;
-                        }
-                        if (!sectionNodes.includes(otherNode.id) && section.nodes.includes(otherNode.id) && section.nodes.includes(node.id)){
-                            momentNodes = [...momentNodes, {...otherNode, section: section.id}]
-                            sectionNodes.push(otherNode.id)
-                        }
-                    }
-                }
-            }
-        }
-    })
-    return momentNodes 
-}
-
 const getConnections = function(sections){
     let connections = {};
     Object.keys(sections).map(key => {
@@ -344,6 +303,7 @@ export const linearEquationSystem = function(){
     const supports = this.props.supports === undefined ? {} : this.props.supports
     const forces = this.props.forces === undefined ? {} : this.props.forces;
     const members = this.props.members === undefined ? {} : this.props.members;
+    const moments = this.props.moments === undefined ? {} : this.props.moments;
     const sections = getSections.bind(this)() 
     // moments
     const connections = getConnections(sections);
@@ -352,60 +312,183 @@ export const linearEquationSystem = function(){
     const knownForces = resultantForceVector.bind(this)(nodes, sections, connections, forces)
     const knownMoments = resultantMomentVector.bind(this)(connections, sections)
 
-    let aMatrix = [...unknownForces, ...unknownMoments];
-    let bMatrix = [...knownForces, ...knownMoments];
-    let textA = ""
-    let textB = ""
-    const innerReactions = internalReactionsA(nodes, members);
-    const externalReactions = solve(aMatrix, bMatrix);
-    let internalB = [];
-    // if the external reactions have been successfully solved
-    if (externalReactions){
-        const supportReactions = solvedSupports(supports, externalReactions);
-        this.props.addSupportReactions(supportReactions);
-        internalB = internalReactionsB(nodes, externalReactions, forces, supports);
-        console.log('innerReactions')
-        console.log(innerReactions)
-        console.log('internalB')
-        console.log(internalB)
-        const secSolution = solve(innerReactions, internalB, {innerReactions: true});
+    if (isTruss(nodes, members)){
+        const aMatrix = trussAMatrix(nodes, members, supports);
+        const bMatrix = trussBMatrix(nodes, forces);
+        const solution = solve(aMatrix, bMatrix);
         this.props.addSolutionErrors(null);
-        if (secSolution){
-            const memberReactions = solvedMembers(members, secSolution);
-            this.props.addMemberReactions(memberReactions);
-            this.props.addSolutionErrors(null);
-        } else {
-            this.props.addSolutionErrors({error: "The problem is internally indeterminate."})
-        }
-    } else {
-        this.props.addSolutionErrors({error: "The problem is externally indeterminate."})
+        this.props.addTrussCheck(true);
+        this.props.addSupportReactions(getSupportReactions(nodes, supports, solution));
+    // frames solved here
+    } else if (frameSolvable(nodes, members, supports) === "solvable") {
+        const aMatrix = frameAMatrix(nodes, members, supports);
+        const bVector = frameBVector(nodes, members, forces, moments, supports);
+        console.log('bVector')
+        console.log(bVector)
+        const solution = solve(aMatrix, bVector);
+        let memberReactions = getMemberReactions(members, nodes, supports, solution);
+        memberReactions = getDataPoints(memberReactions, members, nodes, forces);
+        this.props.addSupportReactions(getSupportReactions(nodes, supports, solution));
+        this.props.addMemberReactions(memberReactions);
+        console.log('solution');
+        console.log(solution);
+        this.props.addSolutionErrors(null);
+        this.props.addTrussCheck(false);
     }
 }
 
-// set up A matrix for the internal reactions in the structure
-const internalReactionsA = function(nodes, members){
-    let internalReactions = [];
-    Object.keys(nodes).map(nodeKey => {
-        let xForces = [];
-        let yForces = [];
-        const nodeA = nodes[nodeKey];
-        // iterate through members
-        Object.keys(members).map(memberKey => {
-            const member = members[memberKey];
-            if (member.nodeA === nodeA.id || member.nodeB === nodeA.id){
-                const nodeB = member.nodeA === nodeA.id ? nodes[member.nodeB] : nodes[member.nodeA];
-                const distance = interNodalDistance(nodeA, nodeB);
-                const angle = Math.atan2(distance.y, distance.x);
-                xForces = [...xForces, Math.cos(angle)];
-                yForces = [...yForces, Math.sin(angle)];
+const getDataPoints = function(memberReactions, members, nodes, forces){
+    Object.keys(members).map(key => {
+        const member = members[key];
+        const memberReaction = memberReactions[key];
+        const nodeA = nodes[member.nodeA];
+        const nodeB = nodes[member.nodeB];
+        const angle = interNodalAngle(nodeA, nodeB);
+        const length = memberLength(member, nodes);
+        const data = {n: [], s: [], m: []};
+        // negative sign for sign convention
+        data.m.push({x: 0, y: memberReaction.nodeA.m ? -memberReaction.nodeA.m : 0, point: true});
+        
+        // external forces
+        const orderedForces = member.forces.map(forceKey => {
+            const force = forces[forceKey];
+            if (force.forceType === 'distributed'){
+                force.x = length * force.startPoint / 100;
+                force.start = length * force.startPoint / 100;
+                force.end = length * force.endPoint / 100;
+                force.nForceStart = (force.xForceStart * Math.cos(angle) + force.yForceStart * Math.sin(angle)) * Math.cos(angle);
+                force.nForceEnd = (force.xForceEnd * Math.cos(angle) + force.yForceEnd * Math.sin(angle)) * Math.cos(angle);
+                force.sForceStart = (- force.xForceStart * Math.sin(angle) + force.yForceStart * Math.cos(angle)) * Math.cos(angle);
+                force.sForceEnd = (- force.xForceEnd * Math.sin(angle) + force.yForceEnd * Math.cos(angle)) * Math.cos(angle);
             } else {
-                xForces = [...xForces, 0];
-                yForces = [...yForces, 0];
+                force.x = length * force.location / 100;
+                force.n = -(force.xForce * Math.cos(angle) + force.yForce * Math.sin(angle));
+                force.s = - force.xForce * Math.sin(angle) + force.yForce * Math.cos(angle);
+            }
+            return (force);
+        }).sort((a,b) => a.x <= b.x ? 1 : -1);
+        for (let i = 0; i < orderedForces.length ; i++){
+            const force = orderedForces[i];
+            if (force.forceType === 'distributed'){
+                const steps = 2000;
+                const distance = force.end - force.start;
+                const dx = (force.end - force.start) / steps;
+                let location = force.start;
+                const nLine = linearEquation(distance, force.nForceStart, force.nForceEnd, {steps: steps});
+                console.log('nLine')
+                console.log(nLine)
+                console.log(force);
+                const sLine = linearEquation(distance, force.sForceStart, force.sForceEnd, {steps: steps});
+                // first point
+                data.n.push({x: location, y: -(nLine.m * (dx/4) + nLine.b) * dx / 2});
+                let total = 0
+                data.s.push({x: location, y: (sLine.m * (dx/4) + sLine.b) * dx / 2}); 
+                total += (sLine.m * (dx/4) + sLine.b) * dx / 2;
+                //middle points
+                let counter = 0;
+                for (let i = 0 ; i < steps - 1; i++){
+                    location += dx;
+                    counter++;
+                    data.n.push({x: location, y: -(nLine.m * location + nLine.b) * dx});
+                    data.s.push({x: location, y: (sLine.m * location + sLine.b) * dx});
+                    total += (sLine.m * location + sLine.b) * dx                
+                }
+                // last points
+                data.n.push({x: (force.start + distance), y: -(nLine.m * (distance-dx/4) + nLine.b) * dx / 2});
+                data.s.push({x: (force.start + distance), y: (sLine.m * (distance-dx/4) + sLine.b) * dx / 2}); 
+                total += (sLine.m * (distance-dx/4) + sLine.b) * dx / 2;
+            } else {
+                data.n.push({x: force.x, y: force.n, point: true});
+                data.s.push({x: force.x, y: force.s, point: true});
+            }
+        }
+        data.m = [...data.m, {x: length, y: memberReaction.nodeB.m ? memberReaction.nodeB.m : 0}]
+        
+        // sort them from left to right
+        data.n.sort((a,b) => a.x >= b.x ? 1 : -1);
+        data.s.sort((a,b) => a.x >= b.x ? 1 : -1);
+
+        // Add node forces
+        data.n = [{x: 0, y: memberReaction.nodeA.n, point: true}, ...data.n, {x: length, y: memberReaction.nodeB.n}];
+        data.s = [{x: 0, y: memberReaction.nodeA.s, point: true}, ...data.s, {x: length, y: memberReaction.nodeB.s}];
+        
+        // aggregate forces
+        Object.keys(data).map(cat => {
+            if (cat !== 'm'){
+                for (let i = 1 ; i < data[cat].length ; i++){
+                    data[cat][i].y += data[cat][i-1].y;
+                }
             }
         })
-        internalReactions = cleanMatrix([...internalReactions, xForces, yForces]);
-    }) 
-    return cleanMatrix(internalReactions);
+        
+
+        let finalData = {n: [], s: [], m: []};
+
+        finalData.m.push({...data.m[0]});
+        // get moments
+        for (let i = 1 ; i < data.s.length; i++){
+            finalData.m.push({
+                x: data.s[i].x,
+                y: data.s[i-1].y * (data.s[i].x-data.s[i-1].x)
+            });
+        }
+        // aggregate moments
+        for (let i = 1 ; i < finalData.m.length ; i++){
+            finalData.m[i].y += finalData.m[i-1].y;
+        }
+        // moment at final point does not need to be added
+
+        // extend forces
+        Object.keys(data).map(cat => {
+            let counter = 0;
+            if (cat !== 'm'){
+                for (let i = 0 ; i < data[cat].length ; i++){
+                    finalData[cat].push(data[cat][i]);
+                    if (data[cat][i].point){
+                        counter++;
+                        finalData[cat].push({...data[cat][i]});
+                        console.log(data);
+                        finalData[cat][i+counter].x = data[cat][i+1].x;
+                    }
+                }
+            }
+        })
+
+        memberReactions[member.id].data = finalData;
+    })
+    return memberReactions;
+}
+
+
+const memberLength = function(member, nodes){
+    const nodeA = nodes[member.nodeA];
+    const nodeB = nodes[member.nodeB];
+    const distance = interNodalDistance(nodeA, nodeB);
+    return ((distance.x) ** 2 + (distance.y) ** 2) ** 0.5;
+}
+
+const linearEquation = function(distance, start, end, options = {}){
+    let slope = (end - start) / distance;
+    let intercept = start;
+    return {m: slope, b: intercept}
+}
+
+const canTransmitMoment = function(node, connections, supports){
+    if (connections[node.id]){
+        return false;
+    }
+    if (node.members.length === 1 && node.connectionType === 'pinned'){
+        return false;
+    }
+    if (node.members.length === 1 && node.support && supports[node.support].supportType !== 'fixed'){
+        return false;
+    }
+    return true;
+}
+
+
+const getOtherNode = function(nodes, member, nodeA){
+    return member.nodeA === nodeA.id ? nodes[member.nodeB] : nodes[member.nodeA];
 }
 
 const cleanMatrix = function(matrix){
@@ -419,14 +502,111 @@ const cleanMatrix = function(matrix){
     return matrix;
 }
 
+// to check if the structure is a truss
+const isTruss = function(nodes, members){
+    let truss = true;
+    for (let i = 0 ; i < Object.keys(nodes).length ; i++){
+        const node = nodes[Object.keys(nodes)[i]];
+        if (node.connectionType === "fixed"){
+            truss = false;
+            break
+        }
+    }
+    if (truss){
+        for (let i = 0 ; i < Object.keys(members).length ; i++){
+            const member = members[Object.keys(members)[i]];
+            if (member.forces.length > 0){
+                truss = false;
+                break
+            }
+        }
+    }
+    return truss
+}
+
+// A matrix for trusses
+const trussAMatrix = function(nodes, members, supports){
+    let A = [];
+    Object.keys(nodes).map(nodeKey => { 
+        let nodeX = [];
+        let nodeY = []
+        const node = nodes[nodeKey];
+
+        Object.keys(supports).map(supportID => {
+            const support = supports[supportID];
+            if (node.id === support.id){
+                if (support.supportType === "fixed"){
+                    nodeX = [...nodeX, 1, 0, 0];
+                    nodeY = [...nodeY, 0, 1, 0];
+                } else if (support.supportType === "pinned"){
+                    nodeX = [...nodeX, 1, 0];
+                    nodeY = [...nodeY, 0, 1];
+                } else if (support.supportType === "xRoller"){
+                    nodeX = [...nodeX, 1];
+                    nodeY = [...nodeY, 0];
+                } else if (support.supportType === "yRoller"){
+                    nodeX = [...nodeX, 0];
+                    nodeY = [...nodeY, 1];
+                } 
+            } else {
+                if (support.supportType === "fixed"){
+                    nodeX = [...nodeX, 0, 0, 0];
+                    nodeY = [...nodeY, 0, 0, 0];
+                } else if (support.supportType === "pinned"){
+                    nodeX = [...nodeX, 0, 0];
+                    nodeY = [...nodeY, 0, 0];
+                } else if (support.supportType === "xRoller"){
+                    nodeX = [...nodeX, 0];
+                    nodeY = [...nodeY, 0];
+                } else if (support.supportType === "yRoller"){
+                    nodeX = [...nodeX, 0];
+                    nodeY = [...nodeY, 0];
+                } 
+            }
+        })
+        Object.keys(members).map(memberKey => {
+            const member = members[memberKey];
+            const nodeB = getOtherNode(nodes, member, node);
+            const angle = interNodalAngle(node, nodeB);
+            if (getNodeMembers(node).includes(member.id)){
+                nodeX = [...nodeX, Math.cos(angle)];
+                nodeY = [...nodeY, Math.sin(angle)];
+            } else {
+                nodeX = [...nodeX, 0];
+                nodeY = [...nodeY, 0];
+            }
+        })
+        A = [...A, nodeX, nodeY];
+    })
+    return A;
+}
+
+const trussBMatrix = (nodes, forces) => {
+    let B = [];
+    Object.keys(nodes).map(key => {
+        const node = nodes[key];
+        if (node.force){
+            const force = forces[node.force];
+            B = [...B, -force.xForce, -force.yForce];
+        } else {
+            B = [...B, 0, 0];
+        }
+    })
+    return B;
+}
+
+const getNodeMembers = function(node){
+    return node.members.map(member => (member.id))
+}
+
 // relates the external forces to their supports
-const solvedSupports = function(supports, solution){
-    let solvedSupports = {}
+const solvedNodes = function(supports, solution){
+    let solvedNodes = {}
     let counter = 0;
     Object.keys(supports).map(supportKey => {
         const support = supports[supportKey];
-        solvedSupports[support.id] = {...support}
-        let solvedSupport = solvedSupports[support.id];
+        solvedNodes[support.id] = {...support}
+        let solvedSupport = solvedNodes[support.id];
         if (support.supportType === 'fixed'){
             solvedSupport.xForce = solution[counter];
             counter++;
@@ -449,40 +629,390 @@ const solvedSupports = function(supports, solution){
             counter++;
         } 
     })
-    return solvedSupports;
+    return solvedNodes;
 }
 
-const solvedMembers = function(members, solution){
-    let solvedMembers = {};
-    let counter = 0;
-    Object.keys(members).map(memberKey => {
-        const member = {...members[memberKey]};
-        member.force = solution[counter];
-        counter++;
-        solvedMembers[memberKey] = member;
-    })
-    return solvedMembers;
-}
-
-const internalReactionsB = function(nodes, solution, forces, supports){
-    let bVector = [];
-    const supportReactions = solvedSupports(supports, solution);
-    Object.keys(nodes).map(nodeKey => {
-        let xForce = 0;
-        let yForce = 0;
-        const node = nodes[nodeKey];
-        if (node.support){
-            xForce -= supportReactions[node.support].xForce;
-            yForce -= supportReactions[node.support].yForce;
+const frameAMatrix = function(nodes, members, supports){
+    let A = [];
+    // deal with nodes first
+    Object.keys(nodes).map(key => {
+        const node = nodes[key];
+        const nodeHasMoment = hasMoment(node, nodes, members, supports);
+        let nodeX = [];
+        let nodeY = [];
+        let nodeM = [];
+        Object.keys(supports).map(supportKey => {
+            const support = supports[supportKey];
+            const reactions = supportReactions(node, support, nodes, members, supports);
+            nodeX = [...nodeX, ...reactions.x];
+            nodeY = [...nodeY, ...reactions.y];
+            if (reactions.m){
+                nodeM = [...nodeM, ...reactions.m];
+            }
+        })
+        let canceller = 1
+        Object.keys(members).map(memberKey =>{
+            const member = members[memberKey];
+            const nodeA = nodes[member.nodeA];
+            const nodeB = nodes[member.nodeB];
+            const nodeAHasMoment = hasMoment(nodeA, nodes, members, supports);
+            const nodeBHasMoment = hasMoment(nodeB, nodes, members, supports);
+            if (nodeAHasMoment){
+                if (nodeA.id === node.id){
+                    nodeX = [...nodeX, -1, 0, 0];
+                    nodeY = [...nodeY, 0, -1, 0];
+                    nodeM = [...nodeM, 0, 0, -1];
+                } else {
+                    nodeX = [...nodeX, 0, 0, 0];
+                    nodeY = [...nodeY, 0, 0, 0];
+                    nodeM = [...nodeM, 0, 0, 0];
+                }
+            } else {
+                if (nodeA.id === node.id){
+                    nodeX = [...nodeX, -1, 0];
+                    nodeY = [...nodeY, 0, -1];
+                    nodeM = [...nodeM, 0, 0]
+                } else {
+                    nodeX = [...nodeX, 0, 0];
+                    nodeY = [...nodeY, 0, 0];
+                    nodeM = [...nodeM, 0, 0]
+                }
+            }
+            if (nodeBHasMoment){
+                if (nodeB.id === node.id){
+                    nodeX = [...nodeX, -1, 0, 0];
+                    nodeY = [...nodeY, 0, -1, 0];
+                    nodeM = [...nodeM, 0, 0, -1];
+                } else {
+                    nodeX = [...nodeX, 0, 0, 0];
+                    nodeY = [...nodeY, 0, 0, 0];
+                    nodeM = [...nodeM, 0, 0, 0];
+                }
+            } else {
+                if (nodeB.id === node.id){
+                    nodeX = [...nodeX, -1, 0];
+                    nodeY = [...nodeY, 0, -1];
+                    nodeM = [...nodeM, 0, 0]
+                } else {
+                    nodeX = [...nodeX, 0, 0];
+                    nodeY = [...nodeY, 0, 0];
+                    nodeM = [...nodeM, 0, 0]
+                }
+            }
+        })
+        A = [...A, nodeX, nodeY];
+        if (nodeHasMoment){
+            A = [...A, nodeM];
         }
+    })
+    Object.keys(members).map(key => {
+        const member = members[key];
+        let memberX = [];
+        let memberY = [];
+        let memberM = [];
+        for (let i = 0; i < numberOfReactions(supports) ; i++){
+            memberX = [...memberX, 0]
+            memberY = [...memberY, 0]
+            memberM = [...memberM, 0]
+        }
+        Object.keys(members).map(innerKey => {
+            const innerMember = members[innerKey];
+            const nodeA = nodes[innerMember.nodeA];
+            const nodeB = nodes[innerMember.nodeB];
+            const nodeAHasMoment = hasMoment(nodeA, nodes, members, supports);
+            const nodeBHasMoment = hasMoment(nodeB, nodes, members, supports);
+            if (innerMember.id === member.id){
+                const distance = interNodalDistance(nodeA, nodeB);
+                if (nodeAHasMoment){
+                    memberX = [...memberX, 1, 0, 0]
+                    memberY = [...memberY, 0, 1, 0]
+                    memberM = [...memberM, 0, 0, 1]
+                } else {
+                    memberX = [...memberX, 1, 0]
+                    memberY = [...memberY, 0, 1]
+                    memberM = [...memberM, 0, 0]
+                }
+                if (nodeBHasMoment){
+                    memberX = [...memberX, 1, 0, 0]
+                    memberY = [...memberY, 0, 1, 0]
+                    memberM = [...memberM, -distance.y, distance.x, 1]
+                } else {
+                    memberX = [...memberX, 1, 0]
+                    memberY = [...memberY, 0, 1]
+                    memberM = [...memberM, -distance.y, distance.x]
+                }
+            } else {
+                if (nodeAHasMoment){
+                    memberX = [...memberX, 0, 0, 0]
+                    memberY = [...memberY, 0, 0, 0]
+                    memberM = [...memberM, 0, 0, 0]
+                } else {
+                    memberX = [...memberX, 0, 0]
+                    memberY = [...memberY, 0, 0]
+                    memberM = [...memberM, 0, 0]
+                }
+                if (nodeBHasMoment){
+                    memberX = [...memberX, 0, 0, 0]
+                    memberY = [...memberY, 0, 0, 0]
+                    memberM = [...memberM, 0, 0, 0]
+                } else {
+                    memberX = [...memberX, 0, 0]
+                    memberY = [...memberY, 0, 0]
+                    memberM = [...memberM, 0, 0]
+                }
+            }
+        })
+        A = [...A, memberX, memberY, memberM];
+    })
+    return A;
+}
+
+const frameBVector = function(nodes, members, forces, moments, supports){
+    let B = [];
+    Object.keys(nodes).map(key => {
+        const node = nodes[key];
         if (node.force){
             const force = forces[node.force];
-            xForce -= force.xForce;
-            yForce -= force.yForce;
+            B = [...B, -force.x, -force.y]
+        } else {
+            B = [...B, 0, 0];
         }
-        bVector = [...bVector, xForce, yForce]
+        if (hasMoment(node, nodes, members, supports)){
+            if (node.moment){
+                const moment = moments[node.moment];
+                B = [...B, -moment.moment]
+            } else {
+                B = [...B, 0];
+            }
+        }
     })
-    return bVector;
+    Object.keys(members).map(memberID => {
+        const member = members[memberID];
+        const memberForce = {
+            x: 0,
+            y: 0,
+            m: 0
+        }
+        member.forces.map(forceID => {
+            const force = forces[forceID];
+            const nodeA = nodes[member.nodeA];
+            if (force.forceType === 'point'){
+                const fLocation = forceLocation(force, nodes, members)
+                const distance = {
+                    x: fLocation.x - nodeA.x,
+                    y: fLocation.y - nodeA.y
+                }
+                memberForce.x += force.xForce
+                memberForce.y += force.yForce
+                memberForce.m += force.yForce * distance.x;
+                memberForce.m -= force.xForce * distance.y;
+
+            } else if (force.forceType === 'distributed'){
+                const equivForce = forceLocation(force, nodes, members)
+                const distance = {
+                    x: equivForce.yForce.location.x - nodeA.x,
+                    y: equivForce.xForce.location.y - nodeA.y
+                }
+                memberForce.x += equivForce.xForce.amount
+                memberForce.y += equivForce.yForce.amount
+                memberForce.m += equivForce.yForce.amount * distance.x;
+                memberForce.m -= equivForce.xForce.amount * distance.y;
+            }
+        })
+        member.moments.map(momentID => {
+            const moment = moments[momentID];
+            memberForce.m += moment.moment
+        })
+        B = [...B, -memberForce.x, -memberForce.y, -memberForce.m]
+    })
+    return B;
+}
+
+const getMemberReactions = function(members, nodes, supports, solution){
+    let reacNumber = numberOfReactions(supports);
+    let counter = reacNumber;
+    let memberReactions = {};
+    Object.keys(members).map(key => {
+        const member = members[key];
+        const angle = interNodalAngle(nodes[member.nodeA], nodes[member.nodeB]);
+        let reactionMember = {...member};
+        reactionMember.nodeA = {};
+        reactionMember.nodeB = {};
+        let xForce = solution[counter];
+        counter++;
+        let yForce = solution[counter];
+        counter++;
+        // add normal and shear forces
+        reactionMember.nodeA.n = -(xForce * Math.cos(angle) + yForce * Math.sin(angle));
+        reactionMember.nodeA.s = - xForce * Math.sin(angle) + yForce * Math.cos(angle);
+        if (hasMoment(nodes[member.nodeA], nodes, members, supports)){
+            reactionMember.nodeA.m = solution[counter];
+            counter++;
+        };
+        xForce = solution[counter];
+        counter++;
+        yForce = solution[counter];
+        counter++;
+        // add normal and shear forces
+        reactionMember.nodeB.n = -(xForce * Math.cos(angle) + yForce * Math.sin(angle));
+        reactionMember.nodeB.s = - xForce * Math.sin(angle) + yForce * Math.cos(angle);
+        if (hasMoment(nodes[member.nodeB], nodes, members, supports)){
+            reactionMember.nodeB.m = solution[counter];
+            counter++;
+        };
+        memberReactions[member.id] = reactionMember;
+    })
+    return memberReactions
+}
+
+// set the reactions at the supports
+const getSupportReactions = function(nodes, supports, solution){
+    let nodeReactions = {};
+    let counter = 0;
+    Object.keys(supports).map(key => {
+        const support = supports[key];
+        const node = nodes[support.node];
+        nodeReactions[node.id] = {};
+        const reaction = nodeReactions[node.id];
+        reaction.node = node.id;
+        if (support.supportType === "fixed"){
+            reaction.xForce = solution[counter];
+            counter++;
+            reaction.yForce = solution[counter];
+            counter++; 
+            reaction.moment = solution[counter];
+            counter++
+        } else if (support.supportType === "pinned"){
+            reaction.xForce = solution[counter];
+            counter++;
+            reaction.yForce = solution[counter];
+            counter++; 
+        } else if (support.supportType === "xRoller"){
+            reaction.xForce = solution[counter];
+            counter++;
+            reaction.yForce = 0;
+        } else if (support.supportType === "yRoller"){
+            reaction.xForce = 0;
+            reaction.yForce = solution[counter];
+            counter++; 
+        }
+    })
+    return nodeReactions;
+}
+
+const hasMoment = function(node, nodes, members, supports){
+    return (node.connectionType === 'fixed' &&
+    (node.members.length > 1 || node.moment ||
+    (node.support &&
+     supports[node.support].supportType === "fixed")))
+}
+
+const supportReactions = function(node, support, nodes, members, supports, options = {}){
+    let reactions = {
+        x: null,
+        y: null,
+        m: null
+    }
+    if (hasMoment(node, nodes, members, supports)){
+        if (support.node === node.id){
+            if (support.supportType === "fixed"){
+                reactions.x = [1, 0, 0];
+                reactions.y = [0, 1, 0];
+                reactions.m = [0, 0, 1];
+            } else if (support.supportType === "pinned"){
+                reactions.x = [1, 0];
+                reactions.y = [0, 1];
+                reactions.m = [0, 0];
+            } else if (support.supportType === "xRoller"){
+                reactions.x = [1];
+                reactions.y = [0];
+                reactions.m = [0];
+            } else if (support.supportType === "yRoller"){
+                reactions.x = [0];
+                reactions.y = [1];
+                reactions.m = [0];
+            } 
+        } else {
+            if (support.supportType === "pinned"){
+                reactions.x = [0, 0];
+                reactions.y = [0, 0];
+                reactions.m = [0, 0];
+            } else if (support.supportType === "xRoller"){
+                reactions.x = [0];
+                reactions.y = [0];
+                reactions.m = [0];
+            } else if (support.supportType === "yRoller"){
+                reactions.x = [0];
+                reactions.y = [0];
+                reactions.m = [0];
+            } 
+        }
+    } else {
+        if (support.node === node.id){
+            if (support.supportType === "pinned"){
+                reactions.x = [1, 0];
+                reactions.y = [0, 1];
+            } else if (support.supportType === "xRoller"){
+                reactions.x = [1];
+                reactions.y = [0];
+            } else if (support.supportType === "yRoller"){
+                reactions.x = [0];
+                reactions.y = [1];
+            } 
+        } else {
+            if (support.supportType === "pinned"){
+                reactions.x = [0, 0];
+                reactions.y = [0, 0];
+            } else if (support.supportType === "xRoller"){
+                reactions.x = [0];
+                reactions.y = [0];
+            } else if (support.supportType === "yRoller"){
+                reactions.x = [0];
+                reactions.y = [0];
+            } 
+        }
+    }
+    return reactions
+}
+
+const frameSolvable = function(nodes, members, supports){
+    let nodeNumber = Object.keys(nodes).length;
+    let memberNumber = Object.keys(members).length;
+    let hingeNumber = 0;
+    let reactionNumber = 0;
+    Object.keys(supports).map(key => {
+        const support = supports[key];
+        if (support.supportType === 'fixed'){
+            reactionNumber += 3;
+        } else if (support.supportType === 'pinned'){
+            reactionNumber += 2;
+        } else {
+            reactionNumber += 1;
+        }
+    })
+    Object.keys(nodes).map(key => {
+        const node = nodes[key];
+        if (node.connectionType === 'pinned'){
+            hingeNumber += 1;
+        }
+    })
+    if (3 * memberNumber + reactionNumber - 3 * nodeNumber - hingeNumber < 0){
+        return "overdetermined";
+    }
+    if (3 * memberNumber + reactionNumber - 3 * nodeNumber - hingeNumber > 0){
+        return "unstable";
+    }
+    return "solvable";
+}
+
+// get member moment at given node
+const getMemberMoment = function(member, nodeA, nodes, forces){
+    return false;
+}
+const memberAngle = function(nodes, member){
+    const nodeA = nodes[member.nodeA];
+    const nodeB = nodes[member.nodeB];
+    return Math.atan2((nodeB.y - nodeA.y), (nodeB.x - nodeA.x));
 }
 
 const forceVectors = function(sections, nodes, supports, connections){
@@ -601,6 +1131,7 @@ const forceVectors = function(sections, nodes, supports, connections){
 // get force summations for the B vector
 const resultantForceVector = function(nodes, sections, connections, forces){
     let forceVector = [];
+    const members = this.props.members
 
     // deal with forces applied to sections
     Object.keys(sections).map(key => {
@@ -620,7 +1151,7 @@ const resultantForceVector = function(nodes, sections, connections, forces){
                 }
             } else if (force.forceType === 'distributed'){
                 if (section.members.includes(force.member)){
-                    const equivForce = forceLocation.bind(this)(force);
+                    const equivForce = forceLocation(force, nodes, members)
                     totalForce.x -= equivForce.xForce.amount;
                     totalForce.y -= equivForce.yForce.amount;
                 }
@@ -668,70 +1199,112 @@ const interNodalDistance = function(nodeA, nodeB){
     }
 }
 
+const interNodalAngle = function(nodeA, nodeB){
+    const distance = interNodalDistance(nodeA, nodeB);
+    return Math.atan2(distance.y, distance.x);
+}
 // get resultant moments for B matrix
-const resultantMomentVector = function(connections, sections){
+// include a member with reactions in the options to calculate only the internal
+// moments of the member 
+const resultantMomentVector = function(connections, sections, options = {}){
     const forces = this.props.forces; 
     const nodes = this.props.nodes;
     const members = this.props.members;
     const moments = this.props.moments;
-    let resultantMoments = []
-    Object.keys(sections).map(key => {
-        let sectionMoment = 0;
-        const section = sections[key];
-        const momentNode = nodes[section.nodes[0]];
-        // deal with node forces first (only if they are not a connection)
-        section.nodes.map(nodeID => {
-            const node = nodes[nodeID];
-            if (node.force && 
-                !Object.keys(connections).map(ID => parseInt(ID)).includes(node.id)){
-                const force = forces[node.force];
-                const fLocation = forceLocation.bind(this)(force)
-                const distance = {
-                    x: fLocation.x - momentNode.x,
-                    y: fLocation.y - momentNode.y
-                }
-                sectionMoment -= force.yForce * distance.x;
-                sectionMoment += force.xForce * distance.y;
-            }
-            if (node.moment){
-                const moment = moments[node.moment]
-                sectionMoment += moment.moment
-            }
-
-        })
-        // deal with member forces
-        section.members.map(memberID => {
-            const member = members[memberID];
-            member.forces.map(forceID => {
-                const force = forces[forceID];
-                if (force.forceType === 'point'){
-                    const fLocation = forceLocation.bind(this)(force)
+    
+    // if no member was provided, carry out calculations for all sections
+    if (!options.member){
+        let resultantMoments = [];
+        Object.keys(sections).map(key => {
+            let sectionMoment = 0;
+            const section = sections[key];
+            const momentNode = nodes[section.nodes[0]];
+            // deal with node forces first (only if they are not a connection)
+            section.nodes.map(nodeID => {
+                const node = nodes[nodeID];
+                if (node.force && 
+                    !Object.keys(connections).map(ID => parseInt(ID)).includes(node.id)){
+                    const force = forces[node.force];
+                    const fLocation = forceLocation(force, nodes, members)
                     const distance = {
                         x: fLocation.x - momentNode.x,
                         y: fLocation.y - momentNode.y
                     }
                     sectionMoment -= force.yForce * distance.x;
                     sectionMoment += force.xForce * distance.y;
-                } else if (force.forceType === 'distributed'){
-                    const equivForce = forceLocation.bind(this)(force);
-                    const distance = {
-                        x: equivForce.yForce.location.x - momentNode.x,
-                        y: equivForce.xForce.location.y - momentNode.y
-                    }
-                    sectionMoment -= equivForce.yForce.amount * distance.x;
-                    sectionMoment += equivForce.xForce.amount * distance.y;
                 }
+                if (node.moment){
+                    const moment = moments[node.moment]
+                    sectionMoment += moment.moment
+                }
+    
             })
-            member.moments.map(momentID => {
-                const moment = moments[momentID]
-                sectionMoment += moment.moment
+            // deal with member forces
+            section.members.map(memberID => {
+                const member = members[memberID];
+                member.forces.map(forceID => {
+                    const force = forces[forceID];
+                    if (force.forceType === 'point'){
+                        const fLocation = forceLocation(force, nodes, members)
+                        const distance = {
+                            x: fLocation.x - momentNode.x,
+                            y: fLocation.y - momentNode.y
+                        }
+                        sectionMoment -= force.yForce * distance.x;
+                        sectionMoment += force.xForce * distance.y;
+                    } else if (force.forceType === 'distributed'){
+                        const equivForce = forceLocation(force, nodes, members)
+                        const distance = {
+                            x: equivForce.yForce.location.x - momentNode.x,
+                            y: equivForce.xForce.location.y - momentNode.y
+                        }
+                        sectionMoment -= equivForce.yForce.amount * distance.x;
+                        sectionMoment += equivForce.xForce.amount * distance.y;
+                    }
+                })
+                member.moments.map(momentID => {
+                    const moment = moments[momentID]
+                    sectionMoment += moment.moment
+                })
             })
+            // deal with moments
+            
+            resultantMoments = [...resultantMoments, sectionMoment];
         })
-        // deal with moments
-        
-        resultantMoments = [...resultantMoments, sectionMoment];
-    })
-    return resultantMoments;
+        return resultantMoments;
+    // if a member is provided
+    } else {
+        let resultantMoment = 0;
+        const member = {...options.member}
+        const momentNode = nodes[member.nodeA];
+        const nodeA = nodes[member.nodeA];
+        const nodeB = nodes[member.nodeB];
+        member.forces.map(forceID => {
+            const force = forces[forceID];
+            if (force.forceType === 'point'){
+                const fLocation = forceLocation(force, nodes, members)
+                const distance = {
+                    x: fLocation.x - momentNode.x,
+                    y: fLocation.y - momentNode.y
+                }
+                resultantMoment += force.yForce * distance.x;
+                resultantMoment -= force.xForce * distance.y;
+            } else if (force.forceType === 'distributed'){
+                const equivForce = forceLocation(force, nodes, members)
+                const distance = {
+                    x: equivForce.yForce.location.x - momentNode.x,
+                    y: equivForce.xForce.location.y - momentNode.y
+                }
+                resultantMoment += equivForce.yForce.amount * distance.x;
+                resultantMoment -= equivForce.xForce.amount * distance.y;
+            }
+            // get moment from opposite reaction
+            resultantMoment += member.nodeBForces.y * (nodeB.x - nodeA.x);
+            resultantMoment -= member.nodeBForces.x * (nodeB.y - nodeA.y);
+        })
+        return resultantMoment
+        // skipping moments because it is already added when adding section moments;
+    }
 }
 
 // get moments of supports in sections
@@ -829,53 +1402,18 @@ const addMoments = function(support, distance, moments, options = {}){
     return moments
 }
 
-
-const nodesInSameSection = function(sections, nodes, nodeA, nodeB){
-    for (let i = 0 ; i < Object.keys(sections).length ; i++){
-        const section = sections[Object.keys(sections)[i]];
-        if (section.nodes.includes(nodeA.id) && section.nodes.includes(nodeB.id)){
-            return true
-        }
-    }
-    return false
-}
-
-const getTotalForces = function(section){
-    const forces = this.props.forces;
-    let totalForce = {
-        x: 0,
-        y: 0
-    };
-    Object.keys(forces).map(key => {
-        const force = forces[key]
-        if (force.node || (force.member && force.forceType === 'point')){
-            if (section.nodes.includes(force.node) || section.members.includes(force.member)){
-                totalForce.x -= force.xForce;
-                totalForce.y -= force.yForce;
-            }
-        } else if (force.forceType === 'distributed'){
-            if (section.members.includes(force.member)){
-                const equivForce = forceLocation.bind(this)(force);
-                totalForce.x -= equivForce.xForce.amount;
-                totalForce.y -= equivForce.yForce.amount;
-            }
-        }
-    });
-    return totalForce;
-}
-
-export const forceLocation = function(force){
+export const forceLocation = function(force, nodes, members){
     let location = null
     if (force.node){
-        const node = this.props.nodes[force.node];
+        const node = nodes[force.node];
         location = {x: node.x, y: node.y};
     } else if (force.member) {
-        let member = this.props.members[force.member]
+        let member = members[force.member]
         if (force.forceType === 'point'){
-            location = memberForceLocation.bind(this)(member, force.location)
+            location = memberForceLocation(member, force.location, nodes)
         } else if (force.forceType === 'distributed'){
-            let start = memberForceLocation.bind(this)(member, force.startPoint)
-            let end = memberForceLocation.bind(this)(member, force.endPoint)
+            let start = memberForceLocation(member, force.startPoint, nodes)
+            let end = memberForceLocation(member, force.endPoint, nodes)
             return equivalentDistributedForce(start, end, force)
         }
     }
@@ -928,30 +1466,42 @@ const getLine = function(start, end, options = {}){
 }
 
 export const equivalentDistributedForce = function(start, end, force){
-    let xForce = {location: {}}
-    let yForce = {location: {}}
-    let width = end.x - start.x
+    let xForce = {location: {}};
+    let yForce = {location: {}};
+    let width = end.x - start.x;
     const memberLine = getLine(start, end);
-    const xForceLine = getLine(start, end, {force: force, xComponent: true})
-    const yForceLine = getLine(start, end, {force: force, yComponent: true})
-    let xCentroid = null 
-    let yCentroid = null 
+    const xForceLine = getLine(start, end, {force: force, xComponent: true});
+    const yForceLine = getLine(start, end, {force: force, yComponent: true});
+    let xCentroid = null;
+    let yCentroid = null;
+    let xPosX = null;
+    let xPosY = null;
+    let yPosX = null;
+    let yPosY = null;
     // if vertical
     if (Math.abs(width)<1E-5){
-        xCentroid = getCentroid(xForceLine, start.y, end.y)
-        yCentroid = getCentroid(yForceLine, start.y, end.y)
-    // if horizontal
+        xCentroid = getCentroid(xForceLine, start.y, end.y);
+        yCentroid = getCentroid(yForceLine, start.y, end.y);
+        xPosX = start.x;
+        xPosY = xCentroid;
+        yPosX = start.x;
+        yPosY = yCentroid;
+    // if not vertical
     } else {
-        xCentroid = getCentroid(xForceLine, start.x, end.x)
-        yCentroid = getCentroid(yForceLine, start.x, end.x)
+        xCentroid = getCentroid(xForceLine, start.x, end.x);
+        yCentroid = getCentroid(yForceLine, start.x, end.x);
+        xPosX = xCentroid;
+        xPosY = getPosOnLine(memberLine, start, xCentroid);
+        yPosX = yCentroid;
+        yPosY = getPosOnLine(memberLine, start, yCentroid);
     }
     const equivForce = resultantForce(force, start, end);
-    xForce.location.x = xCentroid
-    xForce.location.y = getPosOnLine(memberLine, start, xCentroid)
-    xForce.amount = equivForce.x
-    yForce.location.x = yCentroid
-    yForce.location.y = getPosOnLine(memberLine, start, yCentroid)
-    yForce.amount = equivForce.y
+    xForce.location.x = xPosX;
+    xForce.location.y = xPosY;
+    xForce.amount = equivForce.x;
+    yForce.location.x = yPosX;
+    yForce.location.y = yPosY;
+    yForce.amount = equivForce.y;
     return({xForce: xForce, yForce: yForce})
 } 
 
@@ -987,9 +1537,9 @@ const getCentroid = function(line, start, end){
 }
 
 // get location on member by percentage
-const memberForceLocation = function(member, percentage){
-    let nodeA = this.props.nodes[member.nodeA]
-    let nodeB = this.props.nodes[member.nodeB]
+const memberForceLocation = function(member, percentage, nodes){
+    let nodeA = nodes[member.nodeA]
+    let nodeB = nodes[member.nodeB]
     const width = (nodeB.x - nodeA.x)
     const height = (nodeB.y - nodeA.y)
     return({
@@ -998,22 +1548,17 @@ const memberForceLocation = function(member, percentage){
     })    
 }
 
-const numberOfReactions = function(supports, nodes){
+const numberOfReactions = function(supports){
     let number = 0;
     Object.keys(supports).map(key => {
-        const support = supports[key]
-        const node = nodes[support.node]
-        const memberNumber = node.members.length
-        for (let i = 0 ; i < memberNumber ; i++){
-            const member = node.members[i];
-            if (support.supportType === 'fixed'){
-                number += 3;
-            } else if (support.supportType === 'pinned'){
-                number += 2;
-            } else if (support.supportType === 'xRoller' || support.supportType === 'yRoller'){
-                number += 1;
-            }  
-        }
+        const support = supports[key];
+        if (support.supportType === 'fixed'){
+            number += 3;
+        } else if (support.supportType === 'pinned'){
+            number += 2;
+        } else if (support.supportType === 'xRoller' || support.supportType === 'yRoller'){
+            number += 1;
+        }  
     })
     return number
 }

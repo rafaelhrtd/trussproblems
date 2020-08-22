@@ -4,7 +4,8 @@ import classes from './Sidebar.css';
 import Form from '../../../UI/Form/Form';
 import {Links, formValidity, formFromString} from './sidebarHelper';
 import Aux from '../../../hoc/Aux/Aux';
-import Solver from '../../../Components/Solver/Solver'
+import Solver from '../../../Components/Solver/Solver';
+import Button from '../../../UI/Button/Button';
 
 class Sidebar extends Component {
     static contextType = allContext;
@@ -139,39 +140,68 @@ class Sidebar extends Component {
 
             </ul>
         ) : null
-        return(
+        if (this.context.solved){
+            if (this.context.focus && this.context.focus.type === 'member'){
+                return(
+                    <div className={[classes.Sidebar, classes.solved].join(" ")}>
+                        <h1>Member {this.context.focus.item.id}</h1>
+                        <p>Node A: {this.context.focus.item.nodeA}<br/>
+                           Node B: {this.context.focus.item.nodeB}</p>
+                        <p>All diagrams start at node A and finish at node B.</p>
+                    <Button className='Solver' clicked={() => this.context.removeFocus()}>
+                        Back to solution
+                    </Button>
+                    </div>
+                )
 
-            <div className={classes.Sidebar} onClick={() => this.context.setFocusItem(null, null)}>
-                {this.state.form === null ? (
-                    <Aux>
-                        <ul className={classes.Menu}>
-                            {linkItems}
-                        </ul>
-                        <Solver
-                            nodes={{...this.state.nodes}}
-                            members={{...this.state.members}}
-                            forces={{...this.state.forces}}
-                            supports={{...this.state.supports}}
-                            moments={{...this.state.moments}}
-                            addSupportReactions={this.context.addSupportReactions}
-                            addMemberReactions={this.context.addMemberReactions}
-                            addSolutionErrors={this.context.addSolutionErrors}
-                            errors={this.context.solutionErrors}
-                            solve={this.context.solved} />
-                    </Aux>
-                ) : (
-                    <Aux>
-                        {errors}
-                        <Form 
-                            element={this.state.form}
-                            changed={this.changeHandler}
-                            submit={this.submitHandler}
-                            back={this.clickedBackHandler}
-                            delete={this.deleteElementHandler}/>
-                    </Aux>
-                )}
-            </div>
-        )
+            } else {
+                return(
+                    <div className={[classes.Sidebar, classes.solved].join(" ")}>
+                        <h1>Structure successfully solved</h1>
+                        <p>Select members to see internal reactions and diagrams.</p>
+                    <Button className='Solver' clicked={() => this.context.backToBuilder()}>
+                        Back to builder
+                    </Button>
+                    </div>
+                )
+            }
+
+        } else {
+            return(
+                <div className={classes.Sidebar} onClick={() => this.context.setFocusItem(null, null)}>
+                    {this.state.form === null ? (
+                        <Aux>
+                            <ul className={classes.Menu}>
+                                {linkItems}
+                            </ul>
+                            <Solver
+                                nodes={{...this.state.nodes}}
+                                members={{...this.state.members}}
+                                forces={{...this.state.forces}}
+                                supports={{...this.state.supports}}
+                                moments={{...this.state.moments}}
+                                addSupportReactions={this.context.addSupportReactions}
+                                addMemberReactions={this.context.addMemberReactions}
+                                addTrussCheck={this.context.addTrussCheck}
+                                addSolutionErrors={this.context.addSolutionErrors}
+                                errors={this.context.solutionErrors}
+                                solve={this.context.solved} />
+                        </Aux>
+                    ) : (
+                        <Aux>
+                            {errors}
+                            <Form 
+                                element={this.state.form}
+                                changed={this.changeHandler}
+                                submit={this.submitHandler}
+                                back={this.clickedBackHandler}
+                                delete={this.deleteElementHandler}/>
+                        </Aux>
+                    )}
+                </div>
+            )
+
+        }
     }
 }
 
