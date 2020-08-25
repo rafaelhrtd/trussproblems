@@ -8,7 +8,7 @@ const sigFigs = (number) => {
     } else if (Math.abs(number % 1) < 1E-9) { 
         return number;
     } else {
-        return number.toFixed(3);
+        return number.toPrecision(4);
     }
 }
 

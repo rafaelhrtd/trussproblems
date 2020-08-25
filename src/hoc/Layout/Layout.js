@@ -165,7 +165,7 @@ class Layout extends Component {
                     })
                     Object.keys(supports).map(key => {
                         const support = supports[key]
-                        if (support.node.id === node.id){
+                        if (support.node === node.id){
                             delete supports[support.id]                         
                         }
                     })

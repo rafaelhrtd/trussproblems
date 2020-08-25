@@ -47,6 +47,8 @@ class Diagrams extends Component {
             } else if (i !== 0) {
                 if (data[i].y * data[i-1].y < 0){
                     intersections = [...intersections, ((data[i].x + data[i-1].x)/2)];
+                } else if (Math.abs(data[i-1].y) < 1E-8 && Math.abs(data[i].y) > 1E-8){
+                    intersections = [...intersections, ((data[i].x + data[i-1].x)/2)];
                 }
             }
         }

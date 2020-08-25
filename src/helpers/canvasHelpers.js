@@ -75,6 +75,8 @@ export const drawNodes = function(options = {}){
     if (!this.props.solved){
         Object.keys(this.props.supports).map(key => {
             let support = this.props.supports[key];
+            console.log('support');
+            console.log(support);
             drawSingleSupport.bind(this)(support)
         })
     } else {
@@ -188,7 +190,7 @@ export const drawSingleForce = function(force, options = {}){
             console.log(ctx.textAlign)
             ctx.textAlign = textPos.xForce.alignment; 
             console.log(ctx.textAlign)
-            ctx.fillText(force.xForce + ' kN', textPos.xForce.x, textPos.xForce.y) 
+            ctx.fillText(force.xForce.toPrecision(4) + ' kN', textPos.xForce.x, textPos.xForce.y) 
             ctx.closePath()
             console.log(ctx.textAlign)
         }
@@ -202,7 +204,7 @@ export const drawSingleForce = function(force, options = {}){
             ctx.fillStyle = options.color ? options.color : '#444';
             ctx.font = "16px Arial";
             ctx.textAlign = textPos.yForce.alignment; 
-            ctx.fillText(force.yForce + ' kN', textPos.yForce.x, textPos.yForce.y)              
+            ctx.fillText(force.yForce.toPrecision(4) + ' kN', textPos.yForce.x, textPos.yForce.y)              
             ctx.closePath()
         }
     } else if (force.forceType === "distributed"){
@@ -212,10 +214,10 @@ export const drawSingleForce = function(force, options = {}){
         ctx.font = "16px Arial";
         ctx.fillStyle = options.color ? options.color : "#444"
         ctx.textAlign = textPos.startForce.alignment; 
-        ctx.fillText('x: ' + force.xForceStart + ' kN', textPos.startForce.x, textPos.startForce.y-8)     
-        ctx.fillText('y: ' + force.yForceStart + ' kN', textPos.startForce.x, textPos.startForce.y+8)    
-        ctx.fillText('x: ' + force.xForceEnd + ' kN', textPos.endForce.x, textPos.endForce.y-8) 
-        ctx.fillText('y: ' + force.yForceEnd + ' kN', textPos.endForce.x, textPos.endForce.y+8)
+        ctx.fillText('x: ' + force.xForceStart.toPrecision(4) + ' kN', textPos.startForce.x, textPos.startForce.y-8)     
+        ctx.fillText('y: ' + force.yForceStart.toPrecision(4) + ' kN', textPos.startForce.x, textPos.startForce.y+8)    
+        ctx.fillText('x: ' + force.xForceEnd.toPrecision(4) + ' kN', textPos.endForce.x, textPos.endForce.y-8) 
+        ctx.fillText('y: ' + force.yForceEnd.toPrecision(4) + ' kN', textPos.endForce.x, textPos.endForce.y+8)
         ctx.closePath()
     }
 }
