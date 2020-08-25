@@ -322,6 +322,8 @@ export const linearEquationSystem = function(){
     // frames solved here
     } else if (frameSolvable(nodes, members, supports) === "solvable") {
         const aMatrix = frameAMatrix(nodes, members, supports);
+        console.log('aMatrix')
+        console.log(aMatrix)
         const bVector = frameBVector(nodes, members, forces, moments, supports);
         console.log('bVector')
         console.log(bVector)
@@ -644,6 +646,10 @@ const frameAMatrix = function(nodes, members, supports){
         Object.keys(supports).map(supportKey => {
             const support = supports[supportKey];
             const reactions = supportReactions(node, support, nodes, members, supports);
+            console.log('here')
+            console.log(nodeX);
+            console.log(reactions.x);
+            console.log('here');
             nodeX = [...nodeX, ...reactions.x];
             nodeY = [...nodeY, ...reactions.y];
             if (reactions.m){
@@ -773,7 +779,7 @@ const frameBVector = function(nodes, members, forces, moments, supports){
         const node = nodes[key];
         if (node.force){
             const force = forces[node.force];
-            B = [...B, -force.x, -force.y]
+            B = [...B, -force.xForce, -force.yForce]
         } else {
             B = [...B, 0, 0];
         }
@@ -933,7 +939,11 @@ const supportReactions = function(node, support, nodes, members, supports, optio
                 reactions.m = [0];
             } 
         } else {
-            if (support.supportType === "pinned"){
+            if (support.supportType === "fixed"){
+                reactions.x = [0, 0, 0];
+                reactions.y = [0, 0, 0];
+                reactions.m = [0, 0, 0];
+            } else if (support.supportType === "pinned"){
                 reactions.x = [0, 0];
                 reactions.y = [0, 0];
                 reactions.m = [0, 0];
@@ -949,7 +959,11 @@ const supportReactions = function(node, support, nodes, members, supports, optio
         }
     } else {
         if (support.node === node.id){
-            if (support.supportType === "pinned"){
+            if (support.supportType === "fixed"){
+                reactions.x = [1, 0, 0];
+                reactions.y = [0, 1, 0];
+                reactions.m = [0, 0, 0]; 
+            } else if (support.supportType === "pinned"){
                 reactions.x = [1, 0];
                 reactions.y = [0, 1];
             } else if (support.supportType === "xRoller"){
@@ -960,9 +974,14 @@ const supportReactions = function(node, support, nodes, members, supports, optio
                 reactions.y = [1];
             } 
         } else {
-            if (support.supportType === "pinned"){
+            if (support.supportType === "fixed"){
+                reactions.x = [0, 0, 0];
+                reactions.y = [0, 0, 0];
+                reactions.m = [0, 0, 0];
+            } else if (support.supportType === "pinned"){
                 reactions.x = [0, 0];
                 reactions.y = [0, 0];
+                reactions.m = [0, 0];
             } else if (support.supportType === "xRoller"){
                 reactions.x = [0];
                 reactions.y = [0];

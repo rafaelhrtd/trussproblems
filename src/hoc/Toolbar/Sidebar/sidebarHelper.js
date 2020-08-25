@@ -146,7 +146,7 @@ export const memberForce = function(){
             },
             xForceStart: {
                 elementType: 'text',
-                placeholder: 'Start x force',
+                placeholder: 'Start x-force',
                 name: "xForceStart",
                 validation: {
                     required: true,
@@ -158,7 +158,7 @@ export const memberForce = function(){
             },
             xForceEnd: {
                 elementType: 'text',
-                placeholder: 'End x force',
+                placeholder: 'End x-force',
                 name: "xForceEnd",
                 validation: {
                     required: true,
@@ -170,7 +170,7 @@ export const memberForce = function(){
             },
             yForceStart: {
                 elementType: 'text',
-                placeholder: 'Start y force',
+                placeholder: 'Start y-force',
                 name: "yForceStart",
                 validation: {
                     required: true,
@@ -182,7 +182,7 @@ export const memberForce = function(){
             },
             yForceEnd: {
                 elementType: 'text',
-                placeholder: 'End y force',
+                placeholder: 'End y-force',
                 name: "yForceEnd",
                 validation: {
                     required: true,

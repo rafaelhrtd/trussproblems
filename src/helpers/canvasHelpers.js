@@ -139,6 +139,7 @@ export const drawSingleNode = function(node, options = {}){
     ctx.fill();
     ctx.fillStyle = 'black';
     ctx.font = "16px Arial";
+    ctx.textAlign = "start";
     ctx.fillText(node.id.toString(), node.coordinates.x + 15, node.coordinates.y - 10)
     ctx.closePath()
 }
@@ -162,6 +163,7 @@ export const drawSingleMember = function(member, options = {}){
     ctx.stroke();
     ctx.fillStyle = 'black';
     ctx.font = "16px Arial";
+    ctx.textAlign = "start";
     ctx.fillText(member.id.toString(), textPos.x, textPos.y)
     ctx.closePath()
 }
@@ -182,9 +184,13 @@ export const drawSingleForce = function(force, options = {}){
             ctx.beginPath()
             ctx.fillStyle = options.color ? options.color : '#444';
             ctx.font = "16px Arial";
+            console.log('textalign')
+            console.log(ctx.textAlign)
             ctx.textAlign = textPos.xForce.alignment; 
+            console.log(ctx.textAlign)
             ctx.fillText(force.xForce + ' kN', textPos.xForce.x, textPos.xForce.y) 
             ctx.closePath()
+            console.log(ctx.textAlign)
         }
         // y-component
         if (Math.abs(force.yForce) > 1E-5){
@@ -914,21 +920,47 @@ export const getExtrema = (nodes) => {
 export const computePositions = function(node, extrema){
     const width = (extrema.xMax - extrema.xMin);
     const height = (extrema.yMax - extrema.yMin);
-    let newX = parseInt((node.x - extrema.xMin) / width * this.state.width);
-    let newY = parseInt((node.y - extrema.yMin) / height * this.state.height);
+    let newX = null //parseInt((node.x - extrema.xMin) / width * this.state.width);
+    let newY = null //parseInt((node.y - extrema.yMin) / height * this.state.height);
+    let AR = height / width;
+    let windowAR = this.state.height / this.state.width;
     if (height === 0){
         newY = this.state.height / 2.0;
+        AR = 0;
     }
     if (width === 0){
         newX = this.state.width / 2.0;
+        AR = Infinity;
+    }
+    if (AR !== 0 && !(height === 0 && width === 0)){
+        if (windowAR > 1){
+            let yPadding = (this.state.height - 400 - ((extrema.yMax - extrema.yMin) / height * (this.state.height/windowAR-400))) / 2;
+            newY = yPadding + 200+(node.y - extrema.yMin) / height * (this.state.height/windowAR-400);
+            let xPadding = (this.state.width - 400 - ((extrema.xMax - extrema.xMin) / height * (this.state.height/windowAR-400))) / 2;
+            newX = xPadding + 200+(node.x - extrema.xMin) / height * (this.state.height/windowAR-400);
+
+        } else {
+            newY = 200+(node.y - extrema.yMin) / height * (this.state.height-400);
+            let xPadding = (this.state.width - 400 - ((extrema.xMax - extrema.xMin) / height * (this.state.height-400))) / 2;
+            newX = xPadding + 200+(node.x - extrema.xMin) / height * (this.state.height-400);
+        }
+    } else if (height === 0 && width === 0){
+        newX = this.state.width / 2;
+        newY = this.state.height / 2;
+    } else {
+        newY = this.state.height / 2;
+        if (width < 1E-10){
+            newX = this.state.width / 2;
+        } else {
+            let xPadding = (this.state.width - 400 - ((extrema.xMax - extrema.xMin) / width * (this.state.width-400))) / 2;
+            newX = xPadding + 200+(node.x - extrema.xMin) / width * (this.state.width-400);
+        }
     }
     return {
-        x: newX * 0.7 + this.state.width * 0.15,
-        y: ((this.state.height - newY) * 0.7) + this.state.height * 0.15
+        x: newX,
+        y: (this.state.height - newY)
     }
 }
-
-
 
 // add coordinates to node w.r.t. canvas
 export const addNodeCoordinates = function(nodes){
@@ -1015,7 +1047,7 @@ export const checkCloseElements = function(event){
                 })
             }
         })
-        if (!foundNode) {
+        if (!foundNode && !this.props.solved) {
             Object.keys(this.props.supports).map(key =>{
                 const support = this.props.supports[key]
                 const node = this.props.nodes[support.node]

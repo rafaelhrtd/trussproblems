@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Input from '../Input/Input';
-import classes from './Form.css';
+import classes from './Form.scss';
 import Aux from '../../hoc/Aux/Aux'
 class Form extends Component {
 
@@ -48,7 +48,7 @@ class Form extends Component {
         
         return (
             <form className={classes.form} onSubmit={event => this.props.submit(event)}>
-                <h1>{element.inputElements.edit ? 'Edit ' : 'New '} {this.props.element.name} {element.inputElements.edit ? element.inputElements.id : null}</h1>
+                <h2>{element.inputElements.edit ? 'Edit ' : 'New '} {this.props.element.name} {element.inputElements.edit ? element.inputElements.id : null}</h2>
                 {inputs}
                 { element.inputElements.edit ? (
                     <div className={classes.button} onClick={() => {this.props.delete(element.inputElements)}}>

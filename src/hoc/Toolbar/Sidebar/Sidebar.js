@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import allContext from '../../../context/allContext';
-import classes from './Sidebar.css';
+import classes from './Sidebar.scss';
 import Form from '../../../UI/Form/Form';
 import {Links, formValidity, formFromString} from './sidebarHelper';
 import Aux from '../../../hoc/Aux/Aux';
@@ -144,7 +144,8 @@ class Sidebar extends Component {
             if (this.context.focus && this.context.focus.type === 'member'){
                 return(
                     <div className={[classes.Sidebar, classes.solved].join(" ")}>
-                        <h1>Member {this.context.focus.item.id}</h1>
+                        <h1>Statics Solver</h1>
+                        <h2>Member {this.context.focus.item.id}</h2>
                         <p>Node A: {this.context.focus.item.nodeA}<br/>
                            Node B: {this.context.focus.item.nodeB}</p>
                         <p>All diagrams start at node A and finish at node B.</p>
@@ -171,6 +172,7 @@ class Sidebar extends Component {
                 <div className={classes.Sidebar} onClick={() => this.context.setFocusItem(null, null)}>
                     {this.state.form === null ? (
                         <Aux>
+                            <h1>Statics Solver</h1>
                             <ul className={classes.Menu}>
                                 {linkItems}
                             </ul>

@@ -25,7 +25,7 @@ export const deleteMember = function(id, nodes, members, forces, moments){
             forces = newElements.forces     
         }
     })
-    Object.keys(moments).map(key => {
+    Object.keys(moments ? moments : {}).map(key => {
         const moment = moments[key]
         if (moment.member === member.id){
             const newElements = deleteForce(moment.id, nodes, members, moments)

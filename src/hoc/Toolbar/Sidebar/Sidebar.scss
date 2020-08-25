@@ -1,10 +1,19 @@
+@import '../../../Colours.scss';
+
 .Sidebar {
     position: fixed;
     left: 0;
     width: 200px;
     top: 0;
     bottom: 0;
-    background-color: #CCC;
+    background-color: $background-red;
+    color: $text-light;
+    h1 {
+        padding: 1rem 0.5rem;
+        font-size: 1.5rem;
+        text-align: center;
+        color: white;
+    }
 }
 
 .Sidebar ul {
@@ -26,7 +35,7 @@
 .Sidebar ul li:hover,
 .Sidebar ul li:active
 .Sidebar ul li:focus {
-    background-color: #666;
+    background-color: $background-red-hover;
     color: white;
 }
 
@@ -44,17 +53,11 @@
     display: none;
 }
 
-.solved h1 {
-    font-size: 1.25rem;
-    padding: 1rem 0.5rem;
-    margin: 0;
-}
-
 .solved p {
     margin: 0;
     padding: 1rem 0.5rem;
 }
 .options .option {
-    color: black;
-    background-color: #CCC;
+    color: $text-light;
+    background-color: $background-options-red;
 }
