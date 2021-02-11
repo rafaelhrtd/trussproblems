@@ -163,7 +163,7 @@ class Sidebar extends Component {
                         </div>
                     )
                 }
-            } else if (this.context.frame){
+            } else if (this.context.focus && this.context.frame && this.context.focus.type === 'member'){
                 return(
                     <div className={[classes.Sidebar, classes.solved].join(" ")}>
                         <h1>Statics Solver</h1>

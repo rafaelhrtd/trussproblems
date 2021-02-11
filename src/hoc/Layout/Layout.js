@@ -553,26 +553,25 @@ class Layout extends Component {
     
     componentDidMount = () => {
         // Default structure can be added here.
-        /*
         this.addNode({
             x: {value: 0},
             y: {value: 0},
-            connectionType: {value: 'pinned'}
+            connectionType: {value: 'fixed'}
         })
         this.addNode({
-            x: {value: 1},
-            y: {value: 0},
-            connectionType: {value: 'pinned'}
-        })
-        this.addNode({
-            x: {value: 1},
+            x: {value: 0},
             y: {value: 1},
+            connectionType: {value: 'fixed'}
+        })
+        this.addNode({
+            x: {value: 1},
+            y: {value: 0.5},
             connectionType: {value: 'pinned'}
         })
         this.addNode({
-            x: {value: 2},
+            x: {value: 1},
             y: {value: 0},
-            connectionType: {value: 'pinned'}
+            connectionType: {value: 'fixed'}
         })
         setTimeout(() => {
             this.addSupport({
@@ -580,7 +579,7 @@ class Layout extends Component {
                 node: {value: 1},
             })
             this.addSupport({
-                supportType: {value: 'yRoller'},
+                supportType: {value: 'pinned'},
                 node: {value: 4},
             })
             this.addMember({
@@ -595,16 +594,7 @@ class Layout extends Component {
                 nodeA: {value: 3},
                 nodeB: {value: 4}
             })
-            this.addMember({
-                nodeA: {value: 1},
-                nodeB: {value: 3}
-            })
-            this.addMember({
-                nodeA: {value: 2},
-                nodeB: {value: 4}
-            })
         }, 500)
-        */
     }
 
     backToBuilder = () => {

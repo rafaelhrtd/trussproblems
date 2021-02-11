@@ -16,3 +16,7 @@ React implementation of a numerical solver for truss and frame statics problems.
 - Matrix builders are included in a helper file for the Solver component.
 ## Running website
 [Truss Problems](https://trussproblems.com/)
+## Screenshots
+![Example Frame](screenshots/truss.png)
+![External solution](screenshots/external-solution.png)
+![Internal reactions](screenshots/internal-reactions.png)
