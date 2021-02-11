@@ -1,6 +1,6 @@
-#Truss Solver
+# Truss Solver
 React implementation of a numerical solver for truss and frame statics problems. Visualization is implemented through HTML Canvas.
-##Main Features
+## Main Features
 - Create the nodes in any configuration, and arrange them in a 2D space.
     - Nodes may be fixed or hinged joints.
 - Assign different boundary conditions to the structure through fixed, hinged, and roller supports.
