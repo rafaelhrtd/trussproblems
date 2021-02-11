@@ -643,6 +643,7 @@ class Layout extends Component {
                 solved: this.state.solved,
                 supportReactions: this.state.supportReactions,
                 memberReactions: this.state.memberReactions,
+                solutionErrors: this.state.solutionErrors,
                 addNodeForce: this.addNodeForce,
                 addSupport: this.addSupport,
                 addNodeMoment: this.addNodeMoment,

@@ -144,9 +144,24 @@ class Sidebar extends Component {
         if (this.context.solved){
             if (this.context.truss){
                 if (this.context.focus && this.context.focus.type === 'member'){
-                    if (!this.state.seeForces){
-                        
-                    }
+                    return (
+                        <div className={[classes.Sidebar, classes.solved].join(" ")}>
+                            <h1>Internal Forces</h1>
+                            <Button className='Solver' clicked={() => this.context.removeFocus()}>
+                                Back to external solution
+                            </Button>
+                        </div>
+                    )                    
+                } else {
+                    return (
+                        <div className={[classes.Sidebar, classes.solved].join(" ")}>
+                            <h1>Truss successfully solved</h1>
+                            <p>Select members to see internal reactions.</p>
+                            <Button className='Solver' clicked={() => this.context.backToBuilder()}>
+                                Back to builder
+                            </Button>
+                        </div>
+                    )
                 }
             } else if (this.context.frame){
                 return(
@@ -157,7 +172,7 @@ class Sidebar extends Component {
                         Node B: {this.context.focus.item.nodeB}</p>
                         <p>All diagrams start at node A and finish at node B.</p>
                     <Button className='Solver' clicked={() => this.context.removeFocus()}>
-                        Back to solution
+                        Back to external solution
                     </Button>
                     </div>
                 )
@@ -196,6 +211,20 @@ class Sidebar extends Component {
                                 addSolutionErrors={this.context.addSolutionErrors}
                                 errors={this.context.solutionErrors}
                                 solve={this.context.solved} />
+                                
+                            <div className={classes.Errors}>
+                                {Object.keys(this.context.solutionErrors).length > 0 ? (<p>Error:</p>) : null}
+                                <ul className={classes.errorList}>
+                                    {Object.keys(this.context.solutionErrors).map(key => {
+                                        const error = this.context.solutionErrors[key];
+                                        return (
+                                            <li>
+                                                {error}
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            </div>
                         </Aux>
                     ) : (
                         <Aux>

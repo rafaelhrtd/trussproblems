@@ -23,7 +23,7 @@ class Diagrams extends Component {
         if (Math.abs(number) < 1E-9){
             return 0;
         } else if (Math.abs(number % 1) < 1E-9) { 
-            return number;
+            return Math.trunc(number);
         } else {
             return number.toPrecision(4);
         }
@@ -53,8 +53,6 @@ class Diagrams extends Component {
                 processedEquations[i].range += this.sigFigs(eq.start) + "< x <" + this.sigFigs(eq.end);
             }
             let orders = Object.keys(eq.variables).map(order => (parseInt(order))).sort().reverse();
-            console.log('orders');
-            console.log(orders);
             for (let j = 0 ; j < orders.length ; j++){
                 const order = orders[j];
                 if (order !== 0 && Math.abs(eq.variables[order]) > 1E-8 && i !== Object.keys(equations).length - 1){
@@ -111,9 +109,11 @@ class Diagrams extends Component {
     }
     
     render(){
+        if (this.context.frame){
+
         const RenderNoShape = (props)=>{ 
             return null; 
-           }
+        }
         const member = this.context.memberReactions[this.context.focus.item.id];
         const data = {
             n: member.data.n,
@@ -237,8 +237,33 @@ class Diagrams extends Component {
                         <Summary equations={mEquations} unit="m" />
                     </div>
                 </div>
-            </div>
-        )
+            </div>)
+        } else if (this.context.truss){
+            return(
+                <div className={classes.internalForces}>
+                    <h1>Internal Forces</h1>
+                    <table className={classes.internalForcesTable}>
+                        <thead>
+                            <tr>
+                                <th>Member ID</th>
+                                <th>Internal Force [kN]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.keys(this.context.memberReactions).map(key => {
+                                const reaction = this.context.memberReactions[key];
+                                return (
+                                    <tr>
+                                        <td>{reaction.id}</td>
+                                        <td className={classes.value}>{this.sigFigs(reaction.internalForce)}</td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )
+        }
     }
 }
 

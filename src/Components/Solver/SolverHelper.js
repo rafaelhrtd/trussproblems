@@ -35,15 +35,15 @@ export const linearEquationSystem = function(){
     const forces = this.props.forces === undefined ? {} : this.props.forces;
     const members = this.props.members === undefined ? {} : this.props.members;
     const moments = this.props.moments === undefined ? {} : this.props.moments;
-
+    if (Object.keys(forces).length === 0 && Object.keys(moments).length === 0){
+        this.props.addSolutionErrors({
+            truss: "No forces or moments have been entered. Nothing to solve."
+        }, {frame: false, truss: false});
+    }
     if (isTruss(nodes, members)){
         const aMatrix = trussAMatrix(nodes, members, supports);
         const bMatrix = trussBMatrix(nodes, forces);
         const solution = solve(aMatrix, bMatrix);
-        console.log('matrices and solution')
-        console.log(aMatrix);
-        console.log(bMatrix);
-        console.log(solution);
         this.props.addSolutionErrors(null, {frame: false, truss: true});
         this.props.addTrussCheck(true);
         this.props.addSupportReactions(getSupportReactions(nodes, supports, solution));
@@ -59,6 +59,16 @@ export const linearEquationSystem = function(){
         this.props.addMemberReactions(memberReactions);
         this.props.addSolutionErrors(null, {frame: true, truss: false});
         this.props.addTrussCheck(false);
+    } else {
+        if (!allNodesConnected.bind(this)()){
+            this.props.addSolutionErrors({
+                truss: "The structure entered is neither a truss nor a frame. Make sure all the nodes are connected."
+            }, {frame: false, truss: false});
+        } else {
+            this.props.addSolutionErrors({
+                frame: "The frame entered is " + frameSolvable(nodes, members, supports) + ". Please make sure your structure is a stable and determined one." 
+            }, {frame: false, truss: false});
+        }
     }
 }
 

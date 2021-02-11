@@ -42,3 +42,32 @@
     margin-top: 0;
     margin-bottom: 1rem;
 }
+
+.internalForces {
+    overflow-y: scroll;
+    padding: 2rem;
+    margin: 0;
+    font-family: "Roboto Slab";
+    h1 {
+        margin-top: 0;
+        text-align: center;
+    }
+    h2 {
+        margin-top: 0;
+        text-align: center;
+    }
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.internalForcesTable {
+    align-self: center;
+    th {
+      padding: 0 2rem;  
+      text-align: center;
+    }
+    .value {
+        text-align: right;
+    }
+}
