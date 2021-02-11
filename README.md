@@ -12,3 +12,4 @@ React implementation of a numerical solver for truss and frame statics problems.
 - A Gauss-Jacobi solver is used to solve equations.
 - Unstable and overdetermined frames are identified, and information is communicated to the user.
 - Recharts is used to present data.
+- Matrix builders are included in a helper file for the Solver component.
