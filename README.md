@@ -8,7 +8,8 @@ React implementation of a numerical solver for truss and frame statics problems.
 - Add forces and moments to nodes and members.
 - Solve trusses for external and internal forces.
 - Solve frames for external and internal forces, as well as internal normal and shear forces and bending moments.
-##Implementation
+- Produce equations for the normal and shear forces, as well as the bending moments through integration of the solved data.
+## Implementation
 - A Gauss-Jacobi solver is used to solve equations.
 - Unstable and overdetermined frames are identified, and information is communicated to the user.
 - Recharts is used to present data.

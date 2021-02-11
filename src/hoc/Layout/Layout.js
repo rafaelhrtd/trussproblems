@@ -552,6 +552,8 @@ class Layout extends Component {
     }
     
     componentDidMount = () => {
+        // Default structure can be added here.
+        /*
         this.addNode({
             x: {value: 0},
             y: {value: 0},
@@ -602,6 +604,7 @@ class Layout extends Component {
                 nodeB: {value: 4}
             })
         }, 500)
+        */
     }
 
     backToBuilder = () => {
