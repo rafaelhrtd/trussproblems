@@ -13,3 +13,5 @@ React implementation of a numerical solver for truss and frame statics problems.
 - Unstable and overdetermined frames are identified, and information is communicated to the user.
 - Recharts is used to present data.
 - Matrix builders are included in a helper file for the Solver component.
+## Running website
+[Truss Problems](https://trussproblems.com/)
