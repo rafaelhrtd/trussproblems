@@ -19,8 +19,11 @@ React implementation of a numerical solver for truss and frame statics problems.
 ## Screenshots
 Here are some examples of the types of problems that can be solved by the application:
 ### Example Frame
+A frame can be observed with a force acting on member (3).
 ![Example Frame](screenshots/truss.png)
 ### External Solution
+Once the "Solve" button is clicked, the reaction forces at the supports are displayed, and internal reactions are calculated.
 ![External solution](screenshots/external-solution.png)
 ### Internal Reactions
+Clicking on a member leads to the internal reactions.
 ![Internal reactions](screenshots/internal-reactions.png)
