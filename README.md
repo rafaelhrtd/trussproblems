@@ -1,16 +1,14 @@
-IN PROGRESS: Redesign
-IN PROGRESS: only show normal forces for trusses
-
-To do:
-- Allow units
-
-DONE: Fix sig figs.
-DONE: only allow member selection in solution mode
-DONE: Fix intersections to count last 0 before non zero
-DONE: do not allow overlaps in dist forces
-DONE: create equations for data. Makes for better results.
-DONE: fix distributed force display
-DONE: position of forces for moments should be 0<x<100
-DONE: centroid problem when area is 0. fix
-DONE: Fixed AR on canvas
-DONE: make sure the structures don't reverse on resize
+#Truss Solver
+React implementation of a numerical solver for truss and frame statics problems. Visualization is implemented through HTML Canvas.
+##Main Features
+- Create the nodes in any configuration, and arrange them in a 2D space.
+    - Nodes may be fixed or hinged joints.
+- Assign different boundary conditions to the structure through fixed, hinged, and roller supports.
+- Connect nodes through members
+- Add forces and moments to nodes and members.
+- Solve trusses for external and internal forces.
+- Solve frames for external and internal forces, as well as internal normal and shear forces and bending moments.
+##Implementation
+- A Gauss-Jacobi solver is used to solve equations.
+- Unstable and overdetermined frames are identified, and information is communicated to the user.
+- Recharts is used to present data.

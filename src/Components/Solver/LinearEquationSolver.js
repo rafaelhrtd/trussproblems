@@ -61,10 +61,8 @@ class LinearSystem {
     solve = (options) => {
         // not enough equations
         if (this.height() < this.width()){
-            console.log('overdetermined system')
             return false;
         } else if (!options.innerReactions && this.height() !== this.width()){
-            console.log('more supports are needed');
             return false;
         } else {
             for (let j = 0 ; j < this.width() ; j++){
@@ -78,7 +76,6 @@ class LinearSystem {
                     this.print();
 
                 } else {
-                    console.log('cant make diagonal non-zero')
                     return false
                 }
             }
@@ -94,12 +91,10 @@ class LinearSystem {
                 console.log('checking solution');
                 for (let j = 0; j < this.width() ; j++){
                     if (j !== i && Math.abs(this.a[i][j]) > 1E-7){
-                        console.log('some zero element is not zero')
                         return false;
                     }
                 }
                 if (Math.abs(this.a[i][i] - 1) > 1E-7){
-                    console.log('some value cannot be solved for');
                     return false;
                 }
             }
