@@ -37,6 +37,7 @@
     "react": "^16.13.1",
     "react-dev-utils": "^5.0.2",
     "react-dom": "^16.13.1",
+    "react-latex": "^2.0.0",
     "recharts": "^1.8.5",
     "resolve": "1.6.0",
     "sass-loader": "^7.3.1",

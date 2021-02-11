@@ -33,12 +33,12 @@ class Layout extends Component {
         }
     }
 
-    addSolutionErrors = (errors) => {
+    addSolutionErrors = (errors, options = {}) => {
         if (JSON.stringify(errors) !== JSON.stringify(this.state.solutionErrors)){
-            this.setState({solutionErrors: errors, solved: false});
+            this.setState({solutionErrors: errors, solved: false, truss: false, frame: false});
         }
         if (!errors){
-            this.setState({solved: true, focus: null});
+            this.setState({solved: true, focus: null, frame: options.frame, truss: options.truss});
         }
     }
 
@@ -52,13 +52,13 @@ class Layout extends Component {
         // if editing existent node
         if (inputElements.edit){
             this.setState((prevState => {
-                let nodes = {...prevState.nodes}
-                let node = {...nodes[inputElements.id]}
-                node.x = inputElements.x.value
-                node.y = inputElements.y.value
-                node.connectionType = inputElements.connectionType.value
-                nodes[inputElements.id] = node
-                return({nodes: nodes})
+                let nodes = {...prevState.nodes};
+                let node = {...nodes[inputElements.id]};
+                node.x = parseFloat(inputElements.x.value);
+                node.y = parseFloat(inputElements.y.value);
+                node.connectionType = inputElements.connectionType.value;
+                nodes[inputElements.id] = node;
+                return({nodes: nodes});
             }))
         // if making new node
         } else {
@@ -555,22 +555,22 @@ class Layout extends Component {
         this.addNode({
             x: {value: 0},
             y: {value: 0},
-            connectionType: {value: 'fixed'},
+            connectionType: {value: 'pinned'}
         })
         this.addNode({
-            x: {value: 0},
-            y: {value: 6.5},
-            connectionType: {value: 'fixed'},
-        })
-        this.addNode({
-            x: {value: 8},
-            y: {value: 5},
-            connectionType: {value: 'pinned'},
-        })
-        this.addNode({
-            x: {value: 8},
+            x: {value: 1},
             y: {value: 0},
-            connectionType: {value: 'fixed'},
+            connectionType: {value: 'pinned'}
+        })
+        this.addNode({
+            x: {value: 1},
+            y: {value: 1},
+            connectionType: {value: 'pinned'}
+        })
+        this.addNode({
+            x: {value: 2},
+            y: {value: 0},
+            connectionType: {value: 'pinned'}
         })
         setTimeout(() => {
             this.addSupport({
@@ -578,7 +578,7 @@ class Layout extends Component {
                 node: {value: 1},
             })
             this.addSupport({
-                supportType: {value: 'pinned'},
+                supportType: {value: 'yRoller'},
                 node: {value: 4},
             })
             this.addMember({
@@ -591,6 +591,14 @@ class Layout extends Component {
             })
             this.addMember({
                 nodeA: {value: 3},
+                nodeB: {value: 4}
+            })
+            this.addMember({
+                nodeA: {value: 1},
+                nodeB: {value: 3}
+            })
+            this.addMember({
+                nodeA: {value: 2},
                 nodeB: {value: 4}
             })
         }, 500)
@@ -637,7 +645,9 @@ class Layout extends Component {
                 memberReactions: this.state.memberReactions,
                 addNodeForce: this.addNodeForce,
                 addSupport: this.addSupport,
-                addNodeMoment: this.addNodeMoment
+                addNodeMoment: this.addNodeMoment,
+                truss: this.state.truss,
+                frame: this.state.frame
             }}>
                 <div className={classes.Container}>
                     <Sidebar

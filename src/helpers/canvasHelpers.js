@@ -75,8 +75,6 @@ export const drawNodes = function(options = {}){
     if (!this.props.solved){
         Object.keys(this.props.supports).map(key => {
             let support = this.props.supports[key];
-            console.log('support');
-            console.log(support);
             drawSingleSupport.bind(this)(support)
         })
     } else {
@@ -186,13 +184,9 @@ export const drawSingleForce = function(force, options = {}){
             ctx.beginPath()
             ctx.fillStyle = options.color ? options.color : '#444';
             ctx.font = "16px Arial";
-            console.log('textalign')
-            console.log(ctx.textAlign)
             ctx.textAlign = textPos.xForce.alignment; 
-            console.log(ctx.textAlign)
             ctx.fillText(force.xForce.toPrecision(4) + ' kN', textPos.xForce.x, textPos.xForce.y) 
             ctx.closePath()
-            console.log(ctx.textAlign)
         }
         // y-component
         if (Math.abs(force.yForce) > 1E-5){
@@ -660,76 +654,26 @@ export const topLine = function(force){
     const bottom = bottomLine.bind(this)(force)
     // if not vertical
     if (Math.abs(nodeA.coordinates.x - nodeB.coordinates.x) > 1E-5){
-        // both start and end are similar
-        if (Math.abs(force.yForceStart - force.yForceEnd) < 1E-5){
-            return {
-                pointA: {
-                    x: bottom.pointA.x,
-                    y: bottom.pointA.y-35
-                },
-                pointB: {
-                    x: bottom.pointB.x,
-                    y: bottom.pointB.y-35
-                }
+        return {
+            pointA: {
+                x: bottom.pointA.x,
+                y: bottom.pointA.y-35
+            },
+            pointB: {
+                x: bottom.pointB.x,
+                y: bottom.pointB.y-35
             }
-        // start is greater
-        } else if (force.yForceStart > force.yForceEnd){
-            return({
-                pointA: {
-                    x: bottom.pointA.x,
-                    y: bottom.pointA.y-35
-                },
-                pointB: {
-                    x: bottom.pointB.x,
-                    y: bottom.pointB.y- 35 * (force.yForceEnd / force.yForceStart)
-                }})
-        // end is greater
-        } else if (force.yForceStart < force.yForceEnd){
-            return({
-                pointA: {
-                    x: bottom.pointA.x,
-                    y: bottom.pointA.y - 35 * (force.yForceStart / force.yForceEnd)
-                },
-                pointB: {
-                    x: bottom.pointB.x,
-                    y: bottom.pointB.y-35 
-                }})
         }
     } else {
-        // both start and end are similar
-        if (Math.abs(force.xForceStart - force.xForceEnd) < 1E-5){
-            return {
-                pointA: {
-                    x: bottom.pointA.x-35,
-                    y: bottom.pointA.y
-                },
-                pointB: {
-                    x: bottom.pointB.x-35,
-                    y: bottom.pointB.y
-                }
+        return {
+            pointA: {
+                x: bottom.pointA.x-35,
+                y: bottom.pointA.y
+            },
+            pointB: {
+                x: bottom.pointB.x-35,
+                y: bottom.pointB.y
             }
-        // start is greater
-        } else if (force.xForceStart > force.xForceEnd){
-            return({
-                pointA: {
-                    x: bottom.pointA.x-35,
-                    y: bottom.pointA.y
-                },
-                pointB: {
-                    x: bottom.pointB.x - 35 * (force.xForceEnd / force.xForceStart),
-                    y: bottom.pointB.y
-                }})
-        // end is greater
-        } else if (force.xForceStart < force.xForceEnd){
-            return({
-                pointA: {
-                    x: bottom.pointA.x - 35 * (force.xForceStart / force.xForceEnd),
-                    y: bottom.pointA.y
-                },
-                pointB: {
-                    x: bottom.pointB.x-35,
-                    y: bottom.pointB.y 
-                }})
         }
 
     }
@@ -935,17 +879,26 @@ export const computePositions = function(node, extrema){
         AR = Infinity;
     }
     if (AR !== 0 && !(height === 0 && width === 0)){
-        if (windowAR > 1){
-            let yPadding = (this.state.height - 400 - ((extrema.yMax - extrema.yMin) / height * (this.state.height/windowAR-400))) / 2;
-            newY = yPadding + 200+(node.y - extrema.yMin) / height * (this.state.height/windowAR-400);
-            let xPadding = (this.state.width - 400 - ((extrema.xMax - extrema.xMin) / height * (this.state.height/windowAR-400))) / 2;
-            newX = xPadding + 200+(node.x - extrema.xMin) / height * (this.state.height/windowAR-400);
+        // the greater padding
+        const drivingPadding = 150;
 
+        // make width the driving factor
+        if (windowAR > AR){
+            const xPadding = drivingPadding;
+            newX = xPadding + (node.x - extrema.xMin) / width * (this.state.width - 2 * xPadding);
+            const yPadding = (this.state.height - (this.state.width - 2 * xPadding) * AR) / 2;
+            newY = yPadding + (node.y - extrema.yMin) / height * (this.state.height - 2 * yPadding);
+        // make height the driving factor
         } else {
-            newY = 200+(node.y - extrema.yMin) / height * (this.state.height-400);
-            let xPadding = (this.state.width - 400 - ((extrema.xMax - extrema.xMin) / height * (this.state.height-400))) / 2;
-            newX = xPadding + 200+(node.x - extrema.xMin) / height * (this.state.height-400);
-        }
+            const yPadding = drivingPadding;
+            newY = yPadding + (node.y - extrema.yMin) / height * (this.state.height - 2 * yPadding);
+            if (AR !== Infinity){
+                const xPadding = (this.state.width - (this.state.height - 2 * yPadding) / AR) / 2;
+                newX = xPadding + (node.x - extrema.xMin) / width * (this.state.width - 2 * xPadding);
+            } else {
+                newX = (this.state.width) / 2;
+            }
+        } 
     } else if (height === 0 && width === 0){
         newX = this.state.width / 2;
         newY = this.state.height / 2;
@@ -1025,30 +978,32 @@ export const checkCloseElements = function(event){
         let foundSupport = false;
         let foundForce = false;
         let foundMoment = false;
-        Object.keys(this.props.nodes).map(key => {
-            const node = this.props.nodes[key]
-            if (getDistance(mousePos, node) < 7){
-                drawNodes.bind(this)()
-                drawSingleNode.bind(this)(node, {color: "red"});
-                this.setState((prevState) => {
-                    canvas.removeEventListener("mousedown", prevState.drawLine)
-                    canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
-                    canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
-                    canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
-                    canvas.removeEventListener("mousedown", this.state.setFocus)
-                    return{
-                        setFocus: setFocusItem.bind({oldthis: this, item: node, itemType: 'node', canvas: canvas}),
-                        checkLeaveNode: checkLeaveNode.bind({oldthis: this, node: node}),
-                        drawLine: drawLine.bind({oldthis: this, node: node})
-                    }
-                }, () => {
-                    canvas.addEventListener("mousedown", this.state.drawLine)
-                    canvas.addEventListener("mousemove", this.state.checkLeaveNode);
-                    canvas.addEventListener("mousedown", this.state.setFocus)
-                    foundNode = true
-                })
-            }
-        })
+        if (!this.props.solved){
+            Object.keys(this.props.nodes).map(key => {
+                const node = this.props.nodes[key]
+                if (getDistance(mousePos, node) < 7){
+                    drawNodes.bind(this)()
+                    drawSingleNode.bind(this)(node, {color: "red"});
+                    this.setState((prevState) => {
+                        canvas.removeEventListener("mousedown", prevState.drawLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveNode)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveLine)
+                        canvas.removeEventListener("mousemove",  this.state.checkLeaveSupport)
+                        canvas.removeEventListener("mousedown", this.state.setFocus)
+                        return{
+                            setFocus: setFocusItem.bind({oldthis: this, item: node, itemType: 'node', canvas: canvas}),
+                            checkLeaveNode: checkLeaveNode.bind({oldthis: this, node: node}),
+                            drawLine: drawLine.bind({oldthis: this, node: node})
+                        }
+                    }, () => {
+                        canvas.addEventListener("mousedown", this.state.drawLine)
+                        canvas.addEventListener("mousemove", this.state.checkLeaveNode);
+                        canvas.addEventListener("mousedown", this.state.setFocus)
+                        foundNode = true
+                    })
+                }
+            })
+        }
         if (!foundNode && !this.props.solved) {
             Object.keys(this.props.supports).map(key =>{
                 const support = this.props.supports[key]
@@ -1074,7 +1029,7 @@ export const checkCloseElements = function(event){
                 }
             })
         }
-        if (!foundNode && !foundSupport) {
+        if (!foundNode && !foundSupport && !this.props.solved) {
             Object.keys(this.props.forces).map(key =>{
                 const force = this.props.forces[key]
                 const textLocations = forceText.bind(this)(force)
@@ -1114,7 +1069,7 @@ export const checkCloseElements = function(event){
                 }
             })
         }
-        if (!foundNode && !foundForce && !foundSupport) {
+        if (!foundNode && !foundForce && !foundSupport && !this.props.solved) {
             Object.keys(this.props.moments).map(key =>{
                 const moment = this.props.moments[key]
                 const point = getMomentLocation.bind(this)(moment)
@@ -1180,7 +1135,6 @@ export const checkCloseElements = function(event){
             })
         }
         return null
-
     }
 }
 

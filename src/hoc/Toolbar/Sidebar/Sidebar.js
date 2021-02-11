@@ -10,7 +10,8 @@ import Button from '../../../UI/Button/Button';
 class Sidebar extends Component {
     static contextType = allContext;
     state = {
-        form: null // Node.bind(this)()
+        form: null,
+        seeForces: false
     }
 
     submitHandler = (event) => {
@@ -141,13 +142,19 @@ class Sidebar extends Component {
             </ul>
         ) : null
         if (this.context.solved){
-            if (this.context.focus && this.context.focus.type === 'member'){
+            if (this.context.truss){
+                if (this.context.focus && this.context.focus.type === 'member'){
+                    if (!this.state.seeForces){
+                        
+                    }
+                }
+            } else if (this.context.frame){
                 return(
                     <div className={[classes.Sidebar, classes.solved].join(" ")}>
                         <h1>Statics Solver</h1>
                         <h2>Member {this.context.focus.item.id}</h2>
                         <p>Node A: {this.context.focus.item.nodeA}<br/>
-                           Node B: {this.context.focus.item.nodeB}</p>
+                        Node B: {this.context.focus.item.nodeB}</p>
                         <p>All diagrams start at node A and finish at node B.</p>
                     <Button className='Solver' clicked={() => this.context.removeFocus()}>
                         Back to solution
@@ -165,6 +172,7 @@ class Sidebar extends Component {
                     </Button>
                     </div>
                 )
+                
             }
 
         } else {

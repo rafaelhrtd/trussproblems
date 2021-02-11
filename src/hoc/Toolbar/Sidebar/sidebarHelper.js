@@ -126,7 +126,8 @@ export const memberForce = function(){
                 name: "startPoint",
                 validation: {
                     required: true,
-                    numericality: true
+                    numericality: true,
+                    percentage: true
                 },
                 onlyIf: {
                     forceType: "distributed"
@@ -138,7 +139,8 @@ export const memberForce = function(){
                 name: "endPoint",
                 validation: {
                     required: true,
-                    numericality: true
+                    numericality: true,
+                    percentage: true
                 },
                 onlyIf: {
                     forceType: "distributed"
@@ -222,7 +224,8 @@ export const memberForce = function(){
                 name: "location",
                 validation: {
                     required: true,
-                    numericality: true
+                    numericality: true,
+                    percentageNoEnds: true
                 },
                 onlyIf: {
                     forceType: "point"
@@ -230,7 +233,10 @@ export const memberForce = function(){
             },
         },
         validation: {
-            unique: true
+            unique: true,
+            noOverlap: true,
+            noSignSwitch: true,
+            validLocations: true
         },
         submitText: "Add force",
         submitFunction: this.context.addMemberForce
@@ -406,6 +412,8 @@ export const Links = function(){
     })
 }
 
+
+// checks validity of individual input elements
 export const checkValidity = function(inputElement){
     let validationTests = {};
     const rules = inputElement.validation
@@ -422,6 +430,21 @@ export const checkValidity = function(inputElement){
         validationTests.numericality = {
             valid: value.toString().match(/[^-?\d\.]/) === null,
             errorMessage: inputElement.placeholder + " must be a number"
+        }
+    }
+    if (rules && rules.percentage){
+        const perValue = parseFloat(value);
+        validationTests.percentage = {
+            valid: perValue <= 100 && perValue >= 0,
+            errorMessage: inputElement.placeholder + " must be in between 0 and 100 (inclusive)."
+        }
+    }
+
+    if (rules && rules.percentageNoEnds){
+        const perValue = parseFloat(value);
+        validationTests.percentage = {
+            valid: perValue < 100 && perValue > 0,
+            errorMessage: inputElement.placeholder + " must be in between 0 and 100 (exclusive). You can also add a force at the nodes."
         }
     }
     let errors = {}
@@ -475,7 +498,7 @@ export const formValidity = function(form, context){
             }
         }
     })
-    // if the inputs are okay in and of themselves
+    // if the inputs are okay in and of themselves, check for form requirements
     if (Object.keys(errors).length === 0){
         if (rules.unique){
             if (form.element === "node") {
@@ -591,6 +614,60 @@ export const formValidity = function(form, context){
             validationTests.notPinned = {
                 valid: valid,
                 errorMessage: "A pinned node cannot have a moment."
+            }
+        }
+
+        // do not allow overlap between distributed forces;
+        if (rules.noSignSwitch){
+
+            let valid = true;
+
+            const xForceStart = parseFloat(form.inputElements.xForceStart.value);
+            const xForceEnd = parseFloat(form.inputElements.xForceEnd.value);
+            const yForceStart = parseFloat(form.inputElements.yForceStart.value);
+            const yForceEnd = parseFloat(form.inputElements.yForceEnd.value);
+
+            if ((xForceStart > 0 && xForceEnd < 0) ||
+                (xForceStart < 0 && xForceEnd > 0) ||
+                (yForceStart > 0 && yForceEnd < 0) ||
+                (yForceStart < 0 && yForceEnd > 0)){
+                    valid = false
+                }
+            validationTests.noSignSwitch = {
+                valid: valid,
+                errorMessage: "No sign switch is allowed in distributed forces. Please use two different distributed forces."
+            }
+        }
+        // disallow sign switched in distributed force
+        if (rules.noOverlap){
+            let valid = true;
+            const startPoint = parseFloat(form.inputElements.startPoint.value);
+            const memberID = parseInt(form.inputElements.member.value);
+            const id = parseInt(form.inputElements.id);
+            Object.keys(context.forces).map(forceKey => {
+                const force = context.forces[forceKey];
+                if (force.forceType === "distributed" && force.member === memberID && id !== force.id){
+                    if (force.startPoint <= startPoint && startPoint < force.endPoint){
+                        valid = false;
+                    }
+                }
+            })
+            validationTests.noOverlap = {
+                valid: valid,
+                errorMessage: "There cannot be any overlap between distributed forces. Please split them into separate forces."
+            }
+        }
+        // check that start location is smaller than end
+        if (rules.validLocations){
+            let valid  = true;
+            const startPoint = parseFloat(form.inputElements.startPoint.value);
+            const endPoint = parseFloat(form.inputElements.endPoint.value);
+            if (startPoint >= endPoint){
+                valid = false;
+            }
+            validationTests.validLocations = {
+                valid: valid,
+                errorMessage: "The end point must be greater than the start point."
             }
         }
         

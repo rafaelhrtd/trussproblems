@@ -16,8 +16,6 @@ class Canvas extends Component {
 
     static contextType = allContext;
 
-
-
     handleResize = () => {
         let style = window.getComputedStyle(this.canvas.current.parentElement);
         let xPadding = parseFloat(style.paddingLeft)
@@ -25,10 +23,11 @@ class Canvas extends Component {
         let height = this.canvas.current.parentElement.clientHeight - yPadding
         let width = this.canvas.current.parentElement.clientWidth - xPadding
         this.setState({
-            height: height,
-            width: width
+            height: height < 400 ? 400 : height,
+            width: width < 400 ? 400 : width
         });
     }
+    
     componentDidMount = () => {
         this.handleResize();
         console.log('did mount')

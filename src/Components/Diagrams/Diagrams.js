@@ -3,6 +3,8 @@ import allContext from '../../context/allContext';
 import classes from './Diagrams.scss';
 import { ScatterChart, ResponsiveContainer, Label, Scatter, CartesianGrid, XAxis, YAxis } from 'recharts';
 import Summary from './Summary/Summary';
+import Latex from 'react-latex';
+
 class Diagrams extends Component {
     static contextType = allContext;
 
@@ -16,6 +18,17 @@ class Diagrams extends Component {
         }
         return max;
     }
+
+    sigFigs = (number) => {
+        if (Math.abs(number) < 1E-9){
+            return 0;
+        } else if (Math.abs(number % 1) < 1E-9) { 
+            return number;
+        } else {
+            return number.toPrecision(4);
+        }
+    }
+
     findMinimum = (data) => {
         data = this.dataCleanup(data);
         let max = data[0];
@@ -25,6 +38,37 @@ class Diagrams extends Component {
             }
         }
         return max;
+    }
+
+    getEquations = (equations) => {
+        let processedEquations = {};
+        for (let i = 0 ; i < Object.keys(equations).length ; i++){
+            const eq  = equations[Object.keys(equations)[i]];
+            processedEquations[i] = {equation: "", range: ""}
+            if (i === 0){
+                processedEquations[i].range += this.sigFigs(eq.start) + "\\leq x <" + this.sigFigs(eq.end);
+            } else if (eq.start === eq.end){
+                processedEquations[i].range += "x =" + this.sigFigs(eq.end);
+            } else {
+                processedEquations[i].range += this.sigFigs(eq.start) + "< x <" + this.sigFigs(eq.end);
+            }
+            let orders = Object.keys(eq.variables).map(order => (parseInt(order))).sort().reverse();
+            console.log('orders');
+            console.log(orders);
+            for (let j = 0 ; j < orders.length ; j++){
+                const order = orders[j];
+                if (order !== 0 && Math.abs(eq.variables[order]) > 1E-8 && i !== Object.keys(equations).length - 1){
+                    if (order === 1){
+                        processedEquations[i].equation += (eq.variables[order] > 0 && j !== 0 ? "+" : "") + this.sigFigs(eq.variables[order]) + "x"
+                    } else {
+                        processedEquations[i].equation += (eq.variables[order] > 0 && j !== 0 ? "+" : "") + this.sigFigs(eq.variables[order]) + "x^"+order;
+                    }
+                } else if (processedEquations[i].equation === "" || Math.abs(eq.variables[order]) > 1E-8){
+                    processedEquations[i].equation += (eq.variables[order] > 0 && j !== 0 ? "+" : "") + this.sigFigs(eq.variables[order]);
+                }
+            }
+        }
+        return processedEquations;
     }
 
     dataCleanup = (data) => {
@@ -80,6 +124,11 @@ class Diagrams extends Component {
         const nInfo = this.getInfo(data.n);
         const sInfo = this.getInfo(data.s);
         const mInfo = this.getInfo(data.m);
+        const nEquations = this.getEquations(member.equations.n)
+        const sEquations = this.getEquations(member.equations.s)
+        const mEquations = this.getEquations(member.equations.m)
+        console.log('nEquations')
+        console.log(nEquations)
 
         const shearColor = "#d96d6d";
         const normalColor = "#4c9df4"
@@ -163,7 +212,7 @@ class Diagrams extends Component {
                         {normal}
                     </div>
                     <div className={classes.information}>
-                        <Summary data={nInfo} unit="f" />
+                        <Summary equations={nEquations} unit="f" />
 
                     </div>
                 </div>
@@ -174,7 +223,7 @@ class Diagrams extends Component {
                         {shear}
                     </div>
                     <div className={classes.information}>
-                        <Summary data={sInfo} unit="f" />
+                        <Summary equations={sEquations} unit="f" />
                     </div>
                 </div>
 
@@ -185,7 +234,7 @@ class Diagrams extends Component {
 
                     </div>
                     <div className={classes.information}>
-                        <Summary data={mInfo} unit="m" />
+                        <Summary equations={mEquations} unit="m" />
                     </div>
                 </div>
             </div>
